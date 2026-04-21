@@ -1,0 +1,32 @@
+.sidebar {
+  background: #fff;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.06);
+}
+
+.logo {
+  padding: 16px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1890ff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+:global(.ant-menu) {
+  border-right: none;
+}
+
+:global(.ant-menu-item),
+:global(.ant-menu-submenu) {
+  color: #333;
+}
+
+:global(.ant-menu-item-selected) {
+  background-color: #e6f7ff !important;
+  color: #1890ff !important;
+}
+
+:global(.ant-menu-item:hover),
+:global(.ant-menu-submenu:hover) {
+  color: #1890ff;
+}

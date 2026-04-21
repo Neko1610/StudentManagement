@@ -1,0 +1,20 @@
+INSERT INTO "user" (id, username, password, role) VALUES (1, 'admin', '{noop}password', 'ADMIN');
+INSERT INTO "user" (id, username, password, role) VALUES (2, 'S001', '{noop}student123', 'STUDENT');
+INSERT INTO "user" (id, username, password, role) VALUES (3, 'jdoe', '{noop}teacher123', 'TEACHER');
+INSERT INTO "user" (id, username, password, role) VALUES (4, 'phS001', '{noop}parent123', 'PARENT');
+
+INSERT INTO clazz (id, name, room, homeroom_teacher_id) VALUES (1, '10A', '101', 1);
+INSERT INTO subject (id, name, lessons_per_week) VALUES (1, 'Mathematics', 5), (2, 'English', 4), (3, 'Physics', 4);
+INSERT INTO teacher (id, full_name, dob, degree, email) VALUES (1, 'John Doe', '1980-04-10', 'MSc Physics', 'john.doe@example.com');
+INSERT INTO student (id, student_code, full_name, dob, gender, email, phone, class_id) VALUES (1, 'S001', 'Nguyen Van A', '2007-01-15', 'MALE', 'a.nguyen@example.com', '+84123456789', 1);
+INSERT INTO parent (id, full_name, phone, email, job) VALUES (1, 'Tran Thi B', '+84987654321', 'b.tran@example.com', 'Engineer');
+INSERT INTO parent_students (parent_id, student_id) VALUES (1, 1);
+INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (1, 1), (1, 3);
+INSERT INTO schedule (id, class_id, subject_id, teacher_id, day_of_week, period) VALUES (1, 1, 1, 1, 'MONDAY', 1);
+INSERT INTO attendance (id, student_id, class_id, date, period, status) VALUES (1, 1, 1, '2025-09-01', 1, 'PRESENT');
+INSERT INTO score (id, student_id, subject_id, oral1, test15_1, mid1, final1, oral2, test15_2, mid2, final2) VALUES (1, 1, 1, 8.0, 7.5, 7.0, 8.5, 8.2, 7.8, 7.9, 8.7);
+INSERT INTO assignment (id, title, description, class_id, teacher_id, deadline) VALUES (1, 'Math Homework 1', 'Complete problems 1-10', 1, 1, '2025-09-15');
+INSERT INTO submission (id, assignment_id, student_id, file_url, score, comment) VALUES (1, 1, 1, 'https://example.com/submission1.pdf', 9.0, 'Submitted on time');
+INSERT INTO notification (id, title, content, sender_id, role_target) VALUES (1, 'Welcome to the school portal', 'Please check your dashboard and study schedule.', 1, 'ALL');
+INSERT INTO tuition (id, student_id, year, status) VALUES (1, 1, '2025', 'PAID');
+INSERT INTO fund (id, class_id, name, amount, status) VALUES (1, 1, 'Class Trip Fund', 1200.00, 'OPEN');

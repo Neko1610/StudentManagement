@@ -1,0 +1,62 @@
+.header {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 0 24px;
+}
+
+.headerContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 64px;
+}
+
+.headerLeft {
+  flex: 1;
+}
+
+.logo {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.notifications {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notification {
+  padding: 12px;
+  border-left: 3px solid #1890ff;
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+.notification.unread {
+  background: #e6f7ff;
+  font-weight: 500;
+}
+
+.notification h4 {
+  margin: 0 0 8px 0;
+  color: #000;
+}
+
+.notification p {
+  margin: 0 0 8px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.notification small {
+  color: #999;
+}

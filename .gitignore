@@ -1,0 +1,18 @@
+# Backend
+/backend/target
+/backend/.mvn
+/backend/.idea
+/backend/*.iml
+
+# Frontend
+/frontend/node_modules
+/frontend/dist
+
+# Flutter
+/flutter_app/.dart_tool
+/flutter_app/.idea
+/flutter_app/build
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,50 @@
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+}
+
+.schedule-table th,
+.schedule-table td {
+  border: 1px solid #eee;
+  padding: 12px;
+}
+
+.schedule-table th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.period-cell {
+  text-align: left;
+  width: 140px;
+  background: #fcfcfc;
+}
+
+.schedule-card {
+  background: #e6f4ff;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  transition: 0.2s;
+}
+
+.schedule-card:hover {
+  transform: scale(1.05);
+}
+
+.schedule-card .class {
+  font-weight: bold;
+}
+
+.schedule-card .room {
+  color: #888;
+}
+
+.empty {
+  color: #ccc;
+}
+
+.today-col {
+  background: #fff7e6;
+}

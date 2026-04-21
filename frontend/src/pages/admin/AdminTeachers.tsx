@@ -63,7 +63,7 @@ export default function AdminTeachers() {
         .replace(/đ/g, 'd')
         .toLowerCase()
         .replace(/\s+/g, '') +
-      'tn@gmail.com'
+      'nt@gmail.com'
     );
   };
 

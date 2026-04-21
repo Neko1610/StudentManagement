@@ -10,6 +10,9 @@ import {
   Space,
   Popconfirm,
   Select,
+  Typography,
+  Avatar,
+  Tag,
 } from 'antd';
 import {
   PlusOutlined,
@@ -19,6 +22,8 @@ import {
 import { useEffect, useState } from 'react';
 import { adminService } from '../../api/adminService';
 import { Teacher } from '../../types';
+
+const { Title, Text } = Typography;
 
 export default function AdminTeachers() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -47,21 +52,21 @@ export default function AdminTeachers() {
       setLoading(false);
     }
   };
+
   const generateEmail = (name: string) => {
     if (!name) return '';
-
     return (
       'gv' +
       name
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/đ/g, 'd')
-        .replace(/Đ/g, 'd')
         .toLowerCase()
         .replace(/\s+/g, '') +
       'tn@gmail.com'
     );
   };
+
   const loadExtraData = async () => {
     try {
       const [subjectData, classData] = await Promise.all([
@@ -71,7 +76,7 @@ export default function AdminTeachers() {
       setSubjects(subjectData);
       setClasses(classData);
     } catch {
-      message.error('Failed to load subjects/classes');
+      message.error('Failed to load data');
     }
   };
 
@@ -83,49 +88,40 @@ export default function AdminTeachers() {
 
   const handleEdit = (teacher: Teacher) => {
     setEditingTeacher(teacher);
-
     form.setFieldsValue({
       ...teacher,
       subjectId: teacher.subjectId,
       classId: teacher.homeroomClassId || undefined,
     });
-
     setModalVisible(true);
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      await adminService.deleteTeacher(id);
-      message.success('Teacher deleted');
-      loadTeachers();
-    } catch {
-      message.error('Failed to delete teacher');
-    }
+    await adminService.deleteTeacher(id);
+    loadTeachers();
   };
 
   const handleSave = async (values: any) => {
     try {
       setLoading(true);
 
-      console.log("SUBMIT:", values); // 🔥 debug
-
       if (editingTeacher) {
         await adminService.updateTeacher(
           editingTeacher.id,
           values,
           Number(values.subjectId),
-          Number(values.classId) 
+          Number(values.classId)
         );
-        message.success('Teacher updated');
+        message.success('Updated');
       } else {
         await adminService.createTeacher(values);
-        message.success('Teacher created');
+        message.success('Created');
       }
 
       setModalVisible(false);
       loadTeachers();
     } catch {
-      message.error('Failed to save teacher');
+      message.error('Error');
     } finally {
       setLoading(false);
     }
@@ -133,44 +129,56 @@ export default function AdminTeachers() {
 
   const columns = [
     {
-      title: 'Name',
+      title: 'NAME',
       dataIndex: 'fullName',
+      render: (text: string) => (
+        <Space>
+          <Avatar style={{ background: '#E2DFFF', color: '#3525CD' }}>
+            {text?.charAt(0)}
+          </Avatar>
+          <Text strong>{text}</Text>
+        </Space>
+      ),
     },
     {
-      title: 'Email',
+      title: 'EMAIL',
       dataIndex: 'email',
+      render: (text: string) => <Text type="secondary">{text}</Text>,
     },
     {
-      title: 'Phone',
+      title: 'PHONE',
       dataIndex: 'phone',
-      render: (text: string) => text || '—',
+      render: (t: string) => t || '—',
     },
     {
-      title: 'Subject',
+      title: 'SUBJECT',
       dataIndex: 'subjectName',
-      render: (text: string) => text || '—',
+      render: (t: string) => (
+        <Tag color="blue" style={{ borderRadius: 20 }}>
+          {t || 'N/A'}
+        </Tag>
+      ),
     },
-
     {
-      title: 'Homeroom',
+      title: 'HOMEROOM',
       dataIndex: 'homeroomClassName',
-      render: (text: string) => text || '—',
+      render: (t: string) => t || '—',
     },
     {
-      title: 'Actions',
+      title: 'ACTIONS',
+      align: 'right' as const,
       render: (_: any, record: Teacher) => (
         <Space>
           <Button
-            type="primary"
-            size="small"
-            icon={<EditOutlined />}
+            icon={<EditOutlined style={{ color: '#3525CD' }} />}
+            type="text"
             onClick={() => handleEdit(record)}
           />
           <Popconfirm
-            title="Delete Teacher"
+            title="Delete teacher?"
             onConfirm={() => handleDelete(record.id)}
           >
-            <Button danger size="small" icon={<DeleteOutlined />} />
+            <Button danger icon={<DeleteOutlined />} type="text" />
           </Popconfirm>
         </Space>
       ),
@@ -178,107 +186,120 @@ export default function AdminTeachers() {
   ];
 
   return (
-    <Spin spinning={loading}>
-      <Card
-        title="Teachers"
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+    <div style={{ padding: 32, background: '#F8F9FA' }}>
+      <Spin spinning={loading}>
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <Title level={2} style={{ margin: 0, color: '#1E00A9' }}>
+              Teachers
+            </Title>
+            <Text type="secondary">
+              Manage academic staff records
+            </Text>
+          </div>
+
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAdd}
+            style={{
+              background: '#3525CD',
+              borderRadius: 10,
+              height: 40,
+              fontWeight: 'bold',
+            }}
+          >
             Add Teacher
           </Button>
-        }
-      >
-        <Table
-          dataSource={teachers}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-        />
-      </Card>
+        </div>
 
-      <Modal
-        title={editingTeacher ? 'Edit Teacher' : 'Add Teacher'}
-        open={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        onOk={() => form.submit()}
-      >
-        <Form form={form} layout="vertical" onFinish={handleSave}>
-          <Form.Item
-            label="Full Name"
-            name="fullName"
-            rules={[{ required: true }]}
-          >
-            <Input />
-          </Form.Item>
+        {/* TABLE */}
+        <Card
+          style={{
+            borderRadius: 16,
+            borderLeft: '4px solid #3525CD',
+          }}
+        >
+          <Table
+            dataSource={teachers}
+            columns={columns}
+            rowKey="id"
+            pagination={{ pageSize: 5 }}
+          />
+        </Card>
 
-          <Form.Item label="Email">
-            <Space>
-              <span>gv</span>
+        {/* MODAL */}
+        <Modal
+          title={editingTeacher ? 'Edit Teacher' : 'Add Teacher'}
+          open={modalVisible}
+          onCancel={() => setModalVisible(false)}
+          onOk={() => form.submit()}
+        >
+          <Form form={form} layout="vertical" onFinish={handleSave}>
+            <Form.Item name="fullName" label="Full Name" rules={[{ required: true }]}>
+              <Input />
+            </Form.Item>
 
-              <Input
-                placeholder="nhập tên"
-                value={emailName}
-                onChange={(e) => {
-                  const value = e.target.value;
+            <Form.Item label="Email">
+              <Space>
+                <span>gv</span>
+                <Input
+                  value={emailName}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEmailName(value);
+                    form.setFieldsValue({
+                      email: generateEmail(value),
+                    });
+                  }}
+                />
+                <span>tn@gmail.com</span>
+              </Space>
+            </Form.Item>
 
-                  setEmailName(value);
+            <Form.Item name="email" hidden>
+              <Input />
+            </Form.Item>
 
-                  form.setFieldsValue({
-                    email: generateEmail(value),
-                  });
-                }}
-              />
+            <Form.Item name="phone" label="Phone">
+              <Input />
+            </Form.Item>
 
-              <span>tn@gmail.com</span>
-            </Space>
-          </Form.Item>
+            <Form.Item name="dateOfBirth" label="Date of Birth">
+              <Input type="date" />
+            </Form.Item>
 
-          <Form.Item name="email" hidden>
-            <Input />
-          </Form.Item>
+            <Form.Item name="address" label="Address">
+              <Input />
+            </Form.Item>
 
-          <Form.Item label="Phone" name="phone">
-            <Input />
-          </Form.Item>
+            <Form.Item name="subjectId" label="Subject" rules={[{ required: true }]}>
+              <Select>
+                {subjects.map((s) => (
+                  <Select.Option key={s.id} value={s.id}>
+                    {s.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-          <Form.Item label="Date of Birth" name="dateOfBirth">
-            <Input type="date" />
-          </Form.Item>
+            <Form.Item name="classId" label="Homeroom">
+              <Select allowClear>
+                {classes.map((c) => (
+                  <Select.Option key={c.id} value={c.id}>
+                    {c.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-          <Form.Item label="Address" name="address">
-            <Input />
-          </Form.Item>
-
-          {/* 🔥 SUBJECT */}
-          <Form.Item
-            label="Subject"
-            name="subjectId"
-            rules={[{ required: true, message: 'Please select subject' }]}
-          >
-            <Select placeholder="Select subject">
-              {subjects.map((s) => (
-                <Select.Option key={s.id} value={s.id}>
-                  {s.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          {/* 🔥 HOMEROOM */}
-          <Form.Item label="Homeroom Class" name="classId">
-            <Select placeholder="Select class (optional)" allowClear>
-              {classes.map((c) => (
-                <Select.Option key={c.id} value={c.id}>
-                  {c.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item label="Qualifications" name="qualifications">
-            <Input.TextArea />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Spin>
+            <Form.Item name="qualifications" label="Qualifications">
+              <Input.TextArea />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Spin>
+    </div>
   );
 }

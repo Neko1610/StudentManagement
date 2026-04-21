@@ -8,9 +8,15 @@ import {
   message,
   Card,
   Input,
+  Typography,
+  Tag,
+  Avatar,
+  Spin,
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { adminService } from '../../api/adminService';
+
+const { Title, Text } = Typography;
 
 const SESSION_MAP: any = {
   AM4: [1, 2, 3, 4],
@@ -26,19 +32,15 @@ export default function AdminSchedules() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
-  // ===== GROUP =====
   const groupSchedules = (data: any[]) => {
     const map = new Map();
 
     data.forEach((item) => {
       const key = `${item.clazz?.id}-${item.teacher?.id}-${item.subject?.id}-${item.dayOfWeek}`;
-
-      if (!map.has(key)) {
-        map.set(key, { ...item, periods: [] });
-      }
-
+      if (!map.has(key)) map.set(key, { ...item, periods: [] });
       map.get(key).periods.push(item.period);
     });
 
@@ -46,19 +48,16 @@ export default function AdminSchedules() {
       const session = Object.keys(SESSION_MAP).find((key) =>
         SESSION_MAP[key].every((p: number) => r.periods.includes(p))
       );
-
-      return {
-        ...r,
-        session: session || r.periods.join(','),
-      };
+      return { ...r, session: session || r.periods.join(',') };
     });
   };
 
-  // ===== LOAD =====
   const loadData = async () => {
+    setLoading(true);
     const res = await adminService.getSchedules();
     setRaw(res);
     setData(groupSchedules(res));
+    setLoading(false);
   };
 
   const loadMeta = async () => {
@@ -77,69 +76,23 @@ export default function AdminSchedules() {
     loadMeta();
   }, []);
 
-  // ===== AUTO ROOM =====
   const handleClassChange = (classId: number) => {
-    const clazz = classes.find(c => c.id === classId);
+    const clazz = classes.find((c) => c.id === classId);
     form.setFieldsValue({ room: clazz?.room || '' });
   };
 
-  // ===== CHECK CONFLICT =====
   const checkConflict = (values: any) => {
     const periods = SESSION_MAP[values.session];
-
-    return raw.some(r =>
-      r.id !== editing?.id &&
-      r.dayOfWeek === values.dayOfWeek &&
-      periods.includes(r.period) &&
-      (
-        r.teacher?.id === values.teacherId ||
-        r.clazz?.id === values.classId
-      )
+    return raw.some(
+      (r) =>
+        r.id !== editing?.id &&
+        r.dayOfWeek === values.dayOfWeek &&
+        periods.includes(r.period) &&
+        (r.teacher?.id === values.teacherId ||
+          r.clazz?.id === values.classId)
     );
   };
 
-  // ===== CREATE =====
-  const handleCreate = async (values: any) => {
-    const periods = SESSION_MAP[values.session];
-
-    for (const p of periods) {
-      await adminService.createSchedule({
-        classId: values.classId,
-        subjectId: values.subjectId,
-        teacherId: values.teacherId,
-        dayOfWeek: values.dayOfWeek,
-        period: p,
-      });
-    }
-  };
-
-  // ===== UPDATE =====
-  const handleUpdate = async (values: any) => {
-    const periods = SESSION_MAP[values.session];
-
-    const related = raw.filter(r =>
-      r.clazz?.id === editing.clazz?.id &&
-      r.teacher?.id === editing.teacher?.id &&
-      r.subject?.id === editing.subject?.id &&
-      r.dayOfWeek === editing.dayOfWeek
-    );
-
-    for (const r of related) {
-      await adminService.deleteSchedule(r.id);
-    }
-
-    for (const p of periods) {
-      await adminService.createSchedule({
-        classId: values.classId,
-        subjectId: values.subjectId,
-        teacherId: values.teacherId,
-        dayOfWeek: values.dayOfWeek,
-        period: p,
-      });
-    }
-  };
-
-  // ===== SUBMIT =====
   const handleSubmit = async (values: any) => {
     try {
       if (checkConflict(values)) {
@@ -147,14 +100,31 @@ export default function AdminSchedules() {
         return;
       }
 
+      const periods = SESSION_MAP[values.session];
+
       if (editing) {
-        await handleUpdate(values);
-        message.success('Updated');
-      } else {
-        await handleCreate(values);
-        message.success('Created');
+        const related = raw.filter(
+          (r) =>
+            r.clazz?.id === editing.clazz?.id &&
+            r.teacher?.id === editing.teacher?.id &&
+            r.subject?.id === editing.subject?.id &&
+            r.dayOfWeek === editing.dayOfWeek
+        );
+
+        for (const r of related) await adminService.deleteSchedule(r.id);
       }
 
+      for (const p of periods) {
+        await adminService.createSchedule({
+          classId: values.classId,
+          subjectId: values.subjectId,
+          teacherId: values.teacherId,
+          dayOfWeek: values.dayOfWeek,
+          period: p,
+        });
+      }
+
+      message.success(editing ? 'Updated' : 'Created');
       setOpen(false);
       setEditing(null);
       form.resetFields();
@@ -164,10 +134,8 @@ export default function AdminSchedules() {
     }
   };
 
-  // ===== EDIT =====
   const handleEdit = (record: any) => {
     setEditing(record);
-
     form.setFieldsValue({
       classId: record.clazz?.id,
       teacherId: record.teacher?.id,
@@ -176,37 +144,65 @@ export default function AdminSchedules() {
       session: record.session,
       room: record.clazz?.room,
     });
-
     setOpen(true);
   };
 
-  // ===== DELETE =====
   const handleDelete = async (record: any) => {
-    const related = raw.filter(r =>
-      r.clazz?.id === record.clazz?.id &&
-      r.teacher?.id === record.teacher?.id &&
-      r.subject?.id === record.subject?.id &&
-      r.dayOfWeek === record.dayOfWeek
+    const related = raw.filter(
+      (r) =>
+        r.clazz?.id === record.clazz?.id &&
+        r.teacher?.id === record.teacher?.id &&
+        r.subject?.id === record.subject?.id &&
+        r.dayOfWeek === record.dayOfWeek
     );
 
-    for (const r of related) {
-      await adminService.deleteSchedule(r.id);
-    }
+    for (const r of related) await adminService.deleteSchedule(r.id);
 
     message.success('Deleted');
     loadData();
   };
 
-  // ===== TABLE =====
   const columns = [
-    { title: 'Class', render: (r: any) => r.clazz?.name },
-    { title: 'Teacher', render: (r: any) => r.teacher?.fullName },
-    { title: 'Subject', render: (r: any) => r.subject?.name },
-    { title: 'Day', dataIndex: 'dayOfWeek' },
-    { title: 'Session', dataIndex: 'session' },
-    { title: 'Room', render: (r: any) => r.clazz?.room || '—' },
     {
-      title: 'Actions',
+      title: 'CLASS',
+      render: (r: any) => <Text strong>{r.clazz?.name}</Text>,
+    },
+    {
+      title: 'TEACHER',
+      render: (r: any) => (
+        <Space>
+          <Avatar style={{ background: '#E2DFFF', color: '#3525CD' }}>
+            {r.teacher?.fullName?.charAt(0)}
+          </Avatar>
+          {r.teacher?.fullName}
+        </Space>
+      ),
+    },
+    {
+      title: 'SUBJECT',
+      render: (r: any) => (
+        <Tag color="blue" style={{ borderRadius: 20 }}>
+          {r.subject?.name}
+        </Tag>
+      ),
+    },
+    { title: 'DAY', dataIndex: 'dayOfWeek' },
+    {
+      title: 'SESSION',
+      dataIndex: 'session',
+      render: (s: string) => (
+        <Tag color="purple" style={{ borderRadius: 6 }}>
+          {s}
+        </Tag>
+      ),
+    },
+    {
+      title: 'ROOM',
+      render: (r: any) => r.clazz?.room || '—',
+    },
+    {
+      title: 'ACTIONS',
+      align: 'right' as const,
       render: (_: any, record: any) => (
         <Space>
           <Button onClick={() => handleEdit(record)}>Edit</Button>
@@ -219,85 +215,141 @@ export default function AdminSchedules() {
   ];
 
   return (
-    <Card
-      title="Schedules"
-      extra={
-        <Button
-          type="primary"
-          onClick={() => {
-            setEditing(null);
-            form.resetFields();
-            setOpen(true);
-          }}
+    <div style={{ padding: 32, background: '#F8F9FA' }}>
+      <Spin spinning={loading}>
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <Title level={2} style={{ margin: 0, color: '#1E00A9' }}>
+              Academic Schedules
+            </Title>
+            <Text type="secondary">
+              Manage weekly lesson rotations
+            </Text>
+          </div>
+
+          <Button
+            type="primary"
+            onClick={() => {
+              setEditing(null);
+              form.resetFields();
+              setOpen(true);
+            }}
+            style={{ background: '#3525CD', borderRadius: 10 }}
+          >
+            + Add Schedule
+          </Button>
+        </div>
+
+        {/* TABLE */}
+        <Card style={{ borderLeft: '4px solid #3525CD', borderRadius: 16 }}>
+          <Table rowKey="id" dataSource={data} columns={columns} />
+        </Card>
+
+        {/* MODAL */}
+        <Modal
+          open={open}
+          onCancel={() => setOpen(false)}
+          onOk={() => form.submit()}
+          title={editing ? 'Edit Schedule' : 'Add Schedule'}
         >
-          + Add Schedule
-        </Button>
-      }
-    >
-      <Table rowKey="id" dataSource={data} columns={columns} />
+          <Form form={form} onFinish={handleSubmit} layout="vertical">
+            <Form.Item name="classId" label="Class" rules={[{ required: true }]}>
+              <Select onChange={handleClassChange}>
+                {classes.map((c) => (
+                  <Select.Option key={c.id} value={c.id}>
+                    {c.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-      <Modal
-        open={open}
-        onCancel={() => setOpen(false)}
-        onOk={() => form.submit()}
-        title={editing ? 'Edit Schedule' : 'Add Schedule'}
-      >
-        <Form form={form} onFinish={handleSubmit} layout="vertical">
-          
-          <Form.Item name="classId" label="Class" rules={[{ required: true }]}>
-            <Select onChange={handleClassChange}>
-              {classes.map(c => (
-                <Select.Option key={c.id} value={c.id}>
-                  {c.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+            <Form.Item name="teacherId" label="Teacher" rules={[{ required: true }]}>
+              <Select>
+                {teachers.map((t) => (
+                  <Select.Option key={t.id} value={t.id}>
+                    {t.fullName}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-          <Form.Item name="teacherId" label="Teacher" rules={[{ required: true }]}>
-            <Select>
-              {teachers.map(t => (
-                <Select.Option key={t.id} value={t.id}>
-                  {t.fullName}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+            <Form.Item name="subjectId" label="Subject" rules={[{ required: true }]}>
+              <Select>
+                {subjects.map((s) => (
+                  <Select.Option key={s.id} value={s.id}>
+                    {s.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-          <Form.Item name="subjectId" label="Subject" rules={[{ required: true }]}>
-            <Select>
-              {subjects.map(s => (
-                <Select.Option key={s.id} value={s.id}>
-                  {s.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+            <Form.Item name="dayOfWeek" label="Day" rules={[{ required: true }]}>
+              <Select>
+                <Select.Option value="MONDAY">MONDAY</Select.Option>
+                <Select.Option value="TUESDAY">TUESDAY</Select.Option>
+                <Select.Option value="WEDNESDAY">WEDNESDAY</Select.Option>
+                <Select.Option value="THURSDAY">THURSDAY</Select.Option>
+                <Select.Option value="FRIDAY">FRIDAY</Select.Option>
+              </Select>
+            </Form.Item>
 
-          <Form.Item name="dayOfWeek" label="Day" rules={[{ required: true }]}>
-            <Select>
-              <Select.Option value="MONDAY">MONDAY</Select.Option>
-              <Select.Option value="TUESDAY">TUESDAY</Select.Option>
-              <Select.Option value="WEDNESDAY">WEDNESDAY</Select.Option>
-              <Select.Option value="THURSDAY">THURSDAY</Select.Option>
-              <Select.Option value="FRIDAY">FRIDAY</Select.Option>
-            </Select>
-          </Form.Item>
+            <Form.Item name="session" label="Session" rules={[{ required: true }]}>
+              <Select>
+                <Select.Option value="AM4">AM4</Select.Option>
+                <Select.Option value="AM5">AM5</Select.Option>
+                <Select.Option value="PM">PM</Select.Option>
+              </Select>
+            </Form.Item>
 
-          <Form.Item name="session" label="Session" rules={[{ required: true }]}>
-            <Select>
-              <Select.Option value="AM4">AM4</Select.Option>
-              <Select.Option value="AM5">AM5</Select.Option>
-              <Select.Option value="PM">PM</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item label="Room" name="room">
-            <Input disabled />
-          </Form.Item>
-
-        </Form>
-      </Modal>
-    </Card>
+            <Form.Item name="room" label="Room">
+              <Input disabled />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Spin>
+    </div>
   );
+  <style>{`
+  .ant-table {
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  .ant-table-thead > tr > th {
+    padding: 16px 20px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em;
+    color: #64748b !important;
+    background: #f8fafc !important;
+  }
+
+  /* BODY */
+  .ant-table-tbody > tr > td {
+    padding: 18px 20px !important;
+    font-size: 14px;
+  }
+
+  /* ROW spacing */
+  .ant-table-tbody > tr {
+    transition: all 0.2s;
+  }
+
+  .ant-table-tbody > tr:hover {
+    background: #f9fafb;
+  }
+
+  /* BUTTON spacing */
+  .ant-btn {
+    border-radius: 8px;
+  }
+
+  /* TAG đẹp hơn */
+  .ant-tag {
+    padding: 2px 10px;
+    font-weight: 600;
+  }
+`}</style>
 }

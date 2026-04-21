@@ -1,246 +1,231 @@
-import { Card, Table, Button, Modal, Form, Input, Select, message, Spin, Space, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import {
+  Card,
+  Table,
+  Button,
+  Space,
+  Typography,
+  Tag,
+  Avatar,
+  Input,
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { adminService } from '../../api/adminService';
-import { Student } from '../../types';
 
-export default function AdminStudents() {
-  const [students, setStudents] = useState<Student[]>([]);
+const { Title, Text } = Typography;
+
+export default function StudentUI() {
+  const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [form] = Form.useForm();
-  const [classes, setClasses] = useState<any[]>([]);
-  const [parents, setParents] = useState<any[]>([]);
-  useEffect(() => {
-    loadStudents();
-    loadClasses();
-    loadParents();
-  }, []);
-  const loadClasses = async () => {
-    const res = await adminService.getClasses();
-    setClasses(res);
-  };
 
-  const loadParents = async () => {
-    const res = await adminService.getParents();
-    setParents(res);
-  };
   const loadStudents = async () => {
     try {
       setLoading(true);
-      const data = await adminService.getStudents();
-      setStudents(data);
-    } catch (error) {
-      message.error('Failed to load students');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdd = () => {
-    setEditingStudent(null);
-    form.resetFields();
-    setModalVisible(true);
-  };
-
-  const handleEdit = (student: Student) => {
-    setEditingStudent(student);
-
-    form.setFieldsValue({
-      ...student,
-      classId: student.classId,
-      parentIds: student.parents?.map((p: any) => p.id), // 🔥 FIX
-    });
-
-    setModalVisible(true);
-  };
-  const handleDelete = async (id: string) => {
-    try {
-      await adminService.deleteStudent(id);
-      message.success('Student deleted');
-      loadStudents();
-    } catch (error) {
-      message.error('Failed to delete student');
-    }
-  };
-
-  const handleSave = async (values: any) => {
-    try {
-      setLoading(true);
-
-      console.log("VALUES:", values);
-
-      // 🔥 FIX: convert dateOfBirth → dob
-      const payload = {
-        ...values,
-        dob: values.dateOfBirth,
-      };
-
-      delete payload.dateOfBirth;
-
-      if (editingStudent) {
-        await adminService.updateStudent(
-          String(editingStudent.id),
-          payload, // 🔥 dùng payload
-          Number(values.classId),
-          values.parentIds?.map((id: string) => Number(id))
-        );
-        message.success('Student updated');
-      } else {
-        await adminService.createStudent(
-          {
-            ...payload, // 🔥 dùng payload
-            parentIds: values.parentIds
-          },
-          Number(values.classId),
-          values.parentIds?.map((id: string) => Number(id))
-        );
-        message.success('Student created');
-      }
-
-      setModalVisible(false);
-      loadStudents();
+      const res = await adminService.getStudents();
+      setStudents(res);
     } catch {
-      message.error('Failed to save student');
+      console.log('load error');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadStudents();
+  }, []);
 
   const columns = [
     {
-      title: 'Name',
+      title: 'NAME',
       dataIndex: 'fullName',
-      key: 'fullName',
+      render: (text: string) => (
+        <Space>
+          <Avatar
+            style={{
+              background: '#E2DFFF',
+              color: '#3525CD',
+              fontWeight: 'bold',
+            }}
+          >
+            {text?.charAt(0)}
+          </Avatar>
+          <Text strong style={{ color: '#1B1B24' }}>
+            {text}
+          </Text>
+        </Space>
+      ),
     },
     {
-      title: 'Email',
+      title: 'EMAIL',
       dataIndex: 'email',
-      key: 'email',
+      render: (email: string) => (
+        <Text type="secondary">{email}</Text>
+      ),
     },
     {
-      title: 'Phone',
+      title: 'PHONE',
       dataIndex: 'phone',
-      key: 'phone',
     },
     {
-      title: 'Class',
-      dataIndex: 'className', // 🔥
+      title: 'CLASS',
+      dataIndex: 'className',
+      render: (c: string) => (
+        <Tag
+          style={{
+            borderRadius: 20,
+            padding: '0 12px',
+            fontWeight: 'bold',
+          }}
+          color="blue"
+        >
+          {c}
+        </Tag>
+      ),
     },
     {
-      title: 'Actions',
-      key: 'actions',
-      render: (_: any, record: Student) => (
+      title: 'STATUS',
+      dataIndex: 'status',
+      render: (s: string) => (
+        <Tag
+          color={s === 'ACTIVE' ? 'green' : 'orange'}
+          style={{ borderRadius: 20 }}
+        >
+          {s || 'ACTIVE'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'ACTIONS',
+      align: 'right' as const,
+      render: (_: any, record: any) => (
         <Space>
           <Button
-            type="primary"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
+            icon={<EditOutlined style={{ color: '#3525CD' }} />}
+            type="text"
+            className="hover:bg-indigo-50"
           />
-          <Popconfirm
-            title="Delete Student"
-            description="Are you sure you want to delete this student?"
-            onConfirm={() => handleDelete(String(record.id))}
-          >
-            <Button danger size="small" icon={<DeleteOutlined />} />
-          </Popconfirm>
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            type="text"
+            className="hover:bg-red-50"
+          />
         </Space>
       ),
     },
   ];
 
   return (
-    <Spin spinning={loading}>
+    <div
+      style={{
+        padding: 32,
+        background: '#F8F9FA',
+        minHeight: '100vh',
+      }}
+    >
+      {/* HEADER */}
+      <div className="flex justify-between items-end mb-8">
+        <div>
+          <Title
+            level={2}
+            style={{
+              margin: 0,
+              fontWeight: 800,
+              color: '#1E00A9',
+            }}
+          >
+            Student Directory
+          </Title>
+          <Text type="secondary">
+            Manage and monitor academic records for all students
+          </Text>
+        </div>
+
+        <Space size="middle">
+          <Input
+            prefix={<SearchOutlined />}
+            placeholder="Search student..."
+            style={{
+              width: 260,
+              borderRadius: 20,
+            }}
+          />
+
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            style={{
+              background: '#3525CD',
+              borderRadius: 10,
+              height: 40,
+              fontWeight: 'bold',
+              boxShadow: '0 4px 10px rgba(53,37,205,0.2)',
+            }}
+          >
+            Add Student
+          </Button>
+        </Space>
+      </div>
+
+      {/* TABLE CARD */}
       <Card
-        title="Students"
-        extra={<Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>Add Student</Button>}
+        bordered={false}
+        style={{
+          borderRadius: 16,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
+          borderLeft: '4px solid #3525CD',
+        }}
+        title={
+          <div>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 16,
+                color: '#1B1B24',
+              }}
+            >
+              Students
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                color: '#999',
+                fontWeight: 'bold',
+                letterSpacing: 1,
+              }}
+            >
+              ACADEMIC YEAR 2023-2024
+            </div>
+          </div>
+        }
       >
         <Table
           dataSource={students}
           columns={columns}
           rowKey="id"
-          pagination={{ pageSize: 10 }}
+          loading={loading}
+          pagination={{
+            pageSize: 5,
+            style: { marginTop: 16 },
+          }}
         />
       </Card>
 
-      <Modal
-        title={editingStudent ? 'Edit Student' : 'Add Student'}
-        open={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        onOk={() => form.submit()}
-      >
-        <Form form={form} layout="vertical" onFinish={handleSave}>
-          <Form.Item label="Full Name" name="fullName" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-
-          <Form.Item label="Email">
-            <Space>
-              <span>hs</span>
-
-              <Input
-                placeholder="nhập SBD"
-                onChange={(e) => {
-                  const value = e.target.value;
-                  form.setFieldsValue({
-                    email: `hs${value}nt@gmail.com`,
-                  });
-                }}
-              />
-
-              <span>nt@gmail.com</span>
-            </Space>
-          </Form.Item>
-
-          <Form.Item label="Phone" name="phone">
-            <Input />
-          </Form.Item>
-
-          <Form.Item label="Date of Birth" name="dateOfBirth">
-            <Input type="date" />
-          </Form.Item>
-
-          <Form.Item label="Gender" name="gender">
-            <Select placeholder="Select gender">
-              <Select.Option value="MALE">Male</Select.Option>
-              <Select.Option value="FEMALE">Female</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item label="Address" name="address">
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            label="Class"
-            name="classId"
-            rules={[{ required: true, message: 'Chọn lớp' }]}
-          >
-            <Select placeholder="Chọn lớp">
-              {classes.map((c) => (
-                <Select.Option key={c.id} value={c.id}>
-                  {c.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            label="Parent"
-            name="parentIds"
-            rules={[{ required: true, message: 'Chọn phụ huynh' }]}
-          >
-            <Select mode="multiple" placeholder="Chọn phụ huynh">
-              {parents.map((p) => (
-                <Select.Option key={p.id} value={p.id}>
-                  {p.fullName} ({p.phone})
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Spin>
+      {/* STYLE FIX TABLE */}
+      <style>{`
+        .ant-table-thead > tr > th {
+          background: #f8fafc !important;
+          font-size: 11px !important;
+          font-weight: 700 !important;
+          color: #64748b !important;
+          letter-spacing: 0.08em;
+        }
+      `}</style>
+    </div>
   );
 }

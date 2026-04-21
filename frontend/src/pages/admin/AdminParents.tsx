@@ -1,8 +1,27 @@
-import { Card, Table, Button, Modal, Form, Input, message, Spin, Space, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import {
+  Card,
+  Table,
+  Button,
+  Modal,
+  Form,
+  Input,
+  message,
+  Spin,
+  Space,
+  Popconfirm,
+  Typography,
+  Avatar,
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { adminService } from '../../api/adminService';
 import { Parent } from '../../types';
+
+const { Title, Text } = Typography;
 
 export default function AdminParents() {
   const [parents, setParents] = useState<Parent[]>([]);
@@ -20,7 +39,7 @@ export default function AdminParents() {
       setLoading(true);
       const data = await adminService.getParents();
       setParents(data);
-    } catch (error) {
+    } catch {
       message.error('Failed to load parents');
     } finally {
       setLoading(false);
@@ -35,44 +54,34 @@ export default function AdminParents() {
 
   const handleEdit = (parent: Parent) => {
     setEditingParent(parent);
-
-    // 🔥 tách email thành phần giữa
-    const emailName = parent.email
-      ?.replace("ph", "")
-      .replace("nt@gmail.com", "");
-
     form.setFieldsValue({
       ...parent,
-      email: parent.email, // 🔥 FIX
+      email: parent.email,
     });
-
     setModalVisible(true);
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      await adminService.deleteParent(id);
-      message.success('Parent deleted');
-      loadParents();
-    } catch (error) {
-      message.error('Failed to delete parent');
-    }
+    await adminService.deleteParent(id);
+    loadParents();
   };
 
   const handleSave = async (values: any) => {
     try {
       setLoading(true);
+
       if (editingParent) {
         await adminService.updateParent(editingParent.id, values);
-        message.success('Parent updated');
+        message.success('Updated');
       } else {
         await adminService.createParent(values);
-        message.success('Parent created');
+        message.success('Created');
       }
+
       setModalVisible(false);
       loadParents();
-    } catch (error) {
-      message.error('Failed to save parent');
+    } catch {
+      message.error('Error');
     } finally {
       setLoading(false);
     }
@@ -80,42 +89,47 @@ export default function AdminParents() {
 
   const columns = [
     {
-      title: 'Name',
+      title: 'NAME',
       dataIndex: 'fullName',
-      key: 'fullName',
+      render: (text: string) => (
+        <Space>
+          <Avatar style={{ background: '#E2DFFF', color: '#3525CD' }}>
+            {text?.charAt(0)}
+          </Avatar>
+          <Text strong>{text}</Text>
+        </Space>
+      ),
     },
     {
-      title: 'Email',
+      title: 'EMAIL',
       dataIndex: 'email',
-      key: 'email',
+      render: (text: string) => <Text type="secondary">{text}</Text>,
     },
     {
-      title: 'Phone',
+      title: 'PHONE',
       dataIndex: 'phone',
-      key: 'phone',
+      render: (t: string) => t || '—',
     },
     {
-      title: 'Job',
+      title: 'JOB',
       dataIndex: 'job',
-      key: 'job',
+      render: (t: string) => t || '—',
     },
     {
-      title: 'Actions',
-      key: 'actions',
+      title: 'ACTIONS',
+      align: 'right' as const,
       render: (_: any, record: Parent) => (
         <Space>
           <Button
-            type="primary"
-            size="small"
-            icon={<EditOutlined />}
+            icon={<EditOutlined style={{ color: '#3525CD' }} />}
+            type="text"
             onClick={() => handleEdit(record)}
           />
           <Popconfirm
-            title="Delete Parent"
-            description="Are you sure you want to delete this parent?"
+            title="Delete parent?"
             onConfirm={() => handleDelete(record.id)}
           >
-            <Button danger size="small" icon={<DeleteOutlined />} />
+            <Button danger icon={<DeleteOutlined />} type="text" />
           </Popconfirm>
         </Space>
       ),
@@ -123,70 +137,104 @@ export default function AdminParents() {
   ];
 
   return (
-    <Spin spinning={loading}>
-      <Card
-        title="Parents"
-        extra={<Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>Add Parent</Button>}
-      >
-        <Table
-          dataSource={parents}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-        />
-      </Card>
+    <div style={{ padding: 32, background: '#F8F9FA', minHeight: '100vh' }}>
+      <Spin spinning={loading}>
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <Title level={2} style={{ margin: 0, color: '#1E00A9' }}>
+              Parents
+            </Title>
+            <Text type="secondary">
+              Manage parent and guardian information
+            </Text>
+          </div>
 
-      <Modal
-        title={editingParent ? 'Edit Parent' : 'Add Parent'}
-        open={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        onOk={() => form.submit()}
-      >
-        <Form form={form} layout="vertical" onFinish={handleSave}>
-          <Form.Item label="Full Name" name="fullName" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAdd}
+            style={{
+              background: '#3525CD',
+              borderRadius: 10,
+              height: 40,
+              fontWeight: 'bold',
+              boxShadow: '0 4px 10px rgba(53,37,205,0.2)',
+            }}
+          >
+            Add Parent
+          </Button>
+        </div>
 
-          <Form.Item label="Email">
-            <Space>
-              <span>ph</span>
+        {/* TABLE */}
+        <Card
+          bordered={false}
+          style={{
+            borderRadius: 16,
+            borderLeft: '4px solid #3525CD',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
+          }}
+        >
+          <Table
+            dataSource={parents}
+            columns={columns}
+            rowKey="id"
+            pagination={{ pageSize: 5 }}
+          />
+        </Card>
 
-              <Input
-                placeholder="nhập tên"
-                onChange={(e) => {
-                  const value = e.target.value;
+        {/* MODAL */}
+        <Modal
+          title={editingParent ? 'Edit Parent' : 'Add Parent'}
+          open={modalVisible}
+          onCancel={() => setModalVisible(false)}
+          onOk={() => form.submit()}
+        >
+          <Form form={form} layout="vertical" onFinish={handleSave}>
+            <Form.Item
+              label="Full Name"
+              name="fullName"
+              rules={[{ required: true }]}
+            >
+              <Input />
+            </Form.Item>
 
-                  const email = `ph${value
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, "")
-                    .replace(/đ/g, "d")
-                    .replace(/Đ/g, "d")
-                    .toLowerCase()
-                    .replace(/\s+/g, "")}nt@gmail.com`;
+            <Form.Item label="Email">
+              <Space>
+                <span>ph</span>
+                <Input
+                  placeholder="nhập tên"
+                  onChange={(e) => {
+                    const value = e.target.value;
 
-                  form.setFieldsValue({
-                    email,
-                  });
-                }}
-              />
+                    const email = `ph${value
+                      .normalize("NFD")
+                      .replace(/[\u0300-\u036f]/g, "")
+                      .replace(/đ/g, "d")
+                      .toLowerCase()
+                      .replace(/\s+/g, "")}nt@gmail.com`;
 
-              <span>nt@gmail.com</span>
-            </Space>
-          </Form.Item>
+                    form.setFieldsValue({ email });
+                  }}
+                />
+                <span>nt@gmail.com</span>
+              </Space>
+            </Form.Item>
 
-          <Form.Item name="email" hidden>
-            <Input />
-          </Form.Item>
+            <Form.Item name="email" hidden>
+              <Input />
+            </Form.Item>
 
-          <Form.Item label="Phone" name="phone">
-            <Input />
-          </Form.Item>
+            <Form.Item name="phone" label="Phone">
+              <Input />
+            </Form.Item>
 
-          <Form.Item label="Job" name="job">
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Spin>
+            <Form.Item name="job" label="Job">
+              <Input />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Spin>
+    </div>
   );
 }

@@ -1,17 +1,14 @@
-import {
-  Card, Row, Col, Statistic, Spin, Empty, List, Tag
-} from 'antd';
-import {
-  FileTextOutlined, BellOutlined
-} from '@ant-design/icons';
+import { BellOutlined, CalendarOutlined, FileTextOutlined, TrophyOutlined } from '@ant-design/icons';
+import { Card, Col, Empty, List, Row, Space, Spin, Statistic, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { studentService } from '../../api/studentService';
 import { commonService } from '../../api/commonService';
 import { auth } from '../../utils/auth';
 import dayjs from 'dayjs';
 
-export default function StudentDashboard() {
+const { Title, Text } = Typography;
 
+export default function StudentDashboard() {
   const user = auth.getUser();
 
   const [student, setStudent] = useState<any>(null);
@@ -20,7 +17,6 @@ export default function StudentDashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // ===== LOAD STUDENT =====
   useEffect(() => {
     if (!user?.id) return;
 
@@ -30,7 +26,7 @@ export default function StudentDashboard() {
         const res = await studentService.getProfile(user.id);
         setStudent(res);
       } catch (err) {
-        console.error("Load student lỗi:", err);
+        console.error('Load student error:', err);
       } finally {
         setLoading(false);
       }
@@ -39,7 +35,6 @@ export default function StudentDashboard() {
     fetchStudent();
   }, [user?.id]);
 
-  // ===== LOAD DASHBOARD =====
   useEffect(() => {
     if (!student?.classId) return;
 
@@ -50,18 +45,14 @@ export default function StudentDashboard() {
         const [aRes, nRes, sRes] = await Promise.all([
           studentService.getAssignmentsByClass(student.classId),
           commonService.getNotifications(),
-          studentService.getSubmissions(student.id)
+          studentService.getSubmissions(student.id),
         ]);
-
-        console.log("Assignments:", aRes);
-        console.log("Submissions:", sRes);
 
         setAssignments(aRes || []);
         setNotifications((nRes || []).slice(0, 5));
         setSubmissions(sRes || []);
-
       } catch (err) {
-        console.error("Load dashboard lỗi:", err);
+        console.error('Load dashboard error:', err);
       } finally {
         setLoading(false);
       }
@@ -70,66 +61,70 @@ export default function StudentDashboard() {
     fetchData();
   }, [student]);
 
-  // ===== LOGIC =====
   const isSubmitted = (assignmentId: number) => {
-    return submissions.some(s => {
-      const id =
-        s.assignmentId ??
-        s.assignment?.id ??
-        s.assignment_id;
-
+    return submissions.some((s) => {
+      const id = s.assignmentId ?? s.assignment?.id ?? s.assignment_id;
       return id === assignmentId;
     });
   };
+
   const isLate = (deadline: string) => {
     return dayjs(deadline).isBefore(dayjs());
   };
 
-  const pendingAssignments = assignments.filter(a => {
+  const pendingAssignments = assignments.filter((a) => {
     return !isSubmitted(a.id) && !isLate(a.deadline);
   });
 
-  // ===== UI =====
   return (
     <Spin spinning={loading}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-        {/* HEADER */}
-        <div>
-          <h2>Welcome, {user?.fullName}</h2>
-          <div style={{ color: '#888' }}>
-            Class: {student?.className || '---'}
+      <div className="page-stack">
+        <div className="page-heading">
+          <div>
+            <Title level={2} className="page-title">Welcome, {user?.fullName}</Title>
+            <div className="page-subtitle">
+              Class: {student?.className || '---'} - Keep track of assignments and school updates.
+            </div>
           </div>
         </div>
 
-        {/* STATS */}
-        <Row gutter={16}>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Pending Assignments"
-                value={pendingAssignments.length}
-                prefix={<FileTextOutlined />}
-              />
+        <Row gutter={[24, 24]}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="stat-card">
+              <div className="stat-icon" style={{ color: '#4f46e5', background: '#eef2ff' }}>
+                <FileTextOutlined />
+              </div>
+              <Statistic title="Pending Assignments" value={pendingAssignments.length} />
             </Card>
           </Col>
-
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Unread Notifications"
-                value={notifications.filter(n => !n.isRead).length}
-                prefix={<BellOutlined />}
-              />
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="stat-card">
+              <div className="stat-icon" style={{ color: '#2563eb', background: '#dbeafe' }}>
+                <BellOutlined />
+              </div>
+              <Statistic title="Unread Notifications" value={notifications.filter((n) => !n.isRead).length} />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="stat-card">
+              <div className="stat-icon" style={{ color: '#0f766e', background: '#ccfbf1' }}>
+                <CalendarOutlined />
+              </div>
+              <Statistic title="Class" value={student?.className || '---'} />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="stat-card">
+              <div className="stat-icon" style={{ color: '#9333ea', background: '#f3e8ff' }}>
+                <TrophyOutlined />
+              </div>
+              <Statistic title="Submitted" value={submissions.length} />
             </Card>
           </Col>
         </Row>
 
-        {/* CONTENT */}
-        <Row gutter={16}>
-
-          {/* ASSIGNMENTS */}
-          <Col span={12}>
+        <Row gutter={[24, 24]}>
+          <Col xs={24} lg={13}>
             <Card title="My Assignments">
               {assignments.length === 0 ? (
                 <Empty description="No assignments" />
@@ -141,23 +136,17 @@ export default function StudentDashboard() {
                     const late = isLate(a.deadline);
 
                     return (
-                      <List.Item>
+                      <List.Item className="soft-list-item">
                         <List.Item.Meta
-                          title={a.title}
+                          title={<Text strong>{a.title}</Text>}
                           description={
-                            <>
-                              <div>
-                                Due: {dayjs(a.deadline).format('DD/MM/YYYY')}
-                              </div>
-
-                              {/* STATUS */}
-                              {submitted && <Tag color="green">Submitted</Tag>}
-                              {!submitted && !late && <Tag color="blue">Pending</Tag>}
-                              {!submitted && late && <Tag color="red">Late</Tag>}
-
-                              {/* DOWNLOAD */}
-                              {a.filePath && (
-                                <div>
+                            <Space direction="vertical" size={6}>
+                              <Text type="secondary">Due: {dayjs(a.deadline).format('DD/MM/YYYY')}</Text>
+                              <Space wrap>
+                                {submitted && <Tag color="green">Submitted</Tag>}
+                                {!submitted && !late && <Tag color="blue">Pending</Tag>}
+                                {!submitted && late && <Tag color="red">Late</Tag>}
+                                {a.filePath && (
                                   <a
                                     href={studentService.downloadAssignment(a.filePath)}
                                     target="_blank"
@@ -165,9 +154,9 @@ export default function StudentDashboard() {
                                   >
                                     Download file
                                   </a>
-                                </div>
-                              )}
-                            </>
+                                )}
+                              </Space>
+                            </Space>
                           }
                         />
                       </List.Item>
@@ -178,8 +167,7 @@ export default function StudentDashboard() {
             </Card>
           </Col>
 
-          {/* NOTIFICATIONS */}
-          <Col span={12}>
+          <Col xs={24} lg={11}>
             <Card title="Recent Notifications">
               {notifications.length === 0 ? (
                 <Empty description="No notifications" />
@@ -187,9 +175,14 @@ export default function StudentDashboard() {
                 <List
                   dataSource={notifications}
                   renderItem={(n) => (
-                    <List.Item>
+                    <List.Item className="soft-list-item">
                       <List.Item.Meta
-                        title={n.title}
+                        title={
+                          <Space>
+                            <Text strong>{n.title}</Text>
+                            {!n.isRead && <Tag color="blue">New</Tag>}
+                          </Space>
+                        }
                         description={n.content}
                       />
                     </List.Item>
@@ -198,7 +191,6 @@ export default function StudentDashboard() {
               )}
             </Card>
           </Col>
-
         </Row>
       </div>
     </Spin>

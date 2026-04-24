@@ -92,9 +92,9 @@ export default function StudentSchedule() {
 
   return (
     <Spin spinning={loading}>
-      <Card title="📅 Thời khóa biểu">
+      <Card title="Weekly Timetable">
 
-        <div style={{ overflowX: 'auto' }}>
+        <div className="schedule-shell">
           <table className="schedule-table">
 
             <thead>

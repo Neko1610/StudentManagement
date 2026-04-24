@@ -2,22 +2,29 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
+  background: #f5f7fb;
 }
 
 .content {
   flex: 1;
   overflow: hidden;
+  background: #f5f7fb;
 }
 
 .main {
-  background: #f5f5f5;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0, rgba(245, 247, 251, 0) 180px),
+    #f5f7fb;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
 
 .container {
-  padding: 24px;
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 32px;
   flex: 1;
 }
 

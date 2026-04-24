@@ -48,7 +48,7 @@ export default function TeacherAttendance() {
       setSelectedClass(classId);
 
       const [studentsRes, attendanceRes] = await Promise.all([
-        teacherService.getStudentsByClass(classId),
+        teacherService.getStudentsByClass(Number(classId)),
         teacherService.getAttendance(classId)
       ]);
 

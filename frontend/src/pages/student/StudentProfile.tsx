@@ -1,13 +1,17 @@
-import { Card, Form, Button, Input, message, Spin, Select} from 'antd';
-import { useState, useEffect } from 'react';
+import { Col, Form, Input, Row, Select, message } from 'antd';
+import { useEffect, useState } from 'react';
+import ProfileDashboardLayout from '../../components/ProfileDashboardLayout';
 import { studentService } from '../../api/studentService';
 import { Student } from '../../types';
 import { auth } from '../../utils/auth';
+
+const inputStyle = { borderRadius: 12, minHeight: 42 };
 
 export default function StudentProfile() {
   const user = auth.getUser();
   const [profile, setProfile] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -23,10 +27,12 @@ export default function StudentProfile() {
       setProfile(data);
 
       form.setFieldsValue({
-        ...data,
-        dob: data.dob?.split('T')[0] // fix format date
+        fullName: data.fullName,
+        studentCode: data.studentCode,
+        className: data.className,
+        dob: data.dob?.split('T')[0],
+        gender: data.gender,
       });
-
     } catch (error) {
       message.error('Failed to load profile');
     } finally {
@@ -38,54 +44,67 @@ export default function StudentProfile() {
     try {
       await studentService.updateProfile(Number(user?.id), values);
       message.success('Profile updated successfully');
+      setEditing(false);
+      loadProfile();
     } catch (error) {
       message.error('Failed to update profile');
     }
   };
 
   return (
-    <Spin spinning={loading}>
-      <Card title="My Profile">
-
-        {/* 🔥 INFO STATIC */}
-        <div style={{ marginBottom: 20 }}>
-          <p><b>Student Code:</b> {profile?.studentCode}</p>
-          <p><b>Email:</b> {profile?.email}</p>
-          <p><b>Class:</b> {profile?.className}</p>
-        </div>
-
-        <Form form={form} layout="vertical" onFinish={handleSaveProfile}>
-
+    <ProfileDashboardLayout
+      loading={loading}
+      form={form}
+      fullName={profile?.fullName}
+      role="Student"
+      description={profile?.className || profile?.studentCode || 'Học sinh đang theo học'}
+      stats={[
+        { label: 'Class', value: profile?.className || '--' },
+        { label: 'Code', value: profile?.studentCode || '--' },
+        { label: 'GPA', value: '--' },
+      ]}
+      editing={editing}
+      onEdit={() => setEditing(true)}
+      onFinish={handleSaveProfile}
+    >
+      <Row gutter={[18, 8]}>
+        <Col xs={24} md={12}>
           <Form.Item label="Full Name" name="fullName">
-            <Input />
+            <Input disabled={!editing} style={inputStyle} />
           </Form.Item>
+        </Col>
 
-          {/* ❌ KHÔNG CHO SỬA EMAIL */}
-          <Form.Item label="Email">
-            <Input value={profile?.email} disabled />
+        <Col xs={24} md={12}>
+          <Form.Item label="Student Code" name="studentCode">
+            <Input disabled style={inputStyle} />
           </Form.Item>
+        </Col>
 
-          <Form.Item label="Phone" name="phone">
-            <Input />
+        <Col xs={24} md={12}>
+          <Form.Item label="Class" name="className">
+            <Input disabled style={inputStyle} />
           </Form.Item>
+        </Col>
 
-          {/* 🔥 FIX DOB */}
+        <Col xs={24} md={12}>
           <Form.Item label="Date of Birth" name="dob">
-            <Input type="date" />
+            <Input disabled={!editing} type="date" style={inputStyle} />
           </Form.Item>
+        </Col>
 
+        <Col xs={24} md={12}>
           <Form.Item label="Gender" name="gender">
-            <Select>
-              <Select.Option value="MALE">Male</Select.Option>
-              <Select.Option value="FEMALE">Female</Select.Option>
-            </Select>
+            <Select
+              disabled={!editing}
+              style={{ minHeight: 42 }}
+              options={[
+                { value: 'MALE', label: 'Male' },
+                { value: 'FEMALE', label: 'Female' },
+              ]}
+            />
           </Form.Item>
-
-          <Button type="primary" htmlType="submit">
-            Save Profile
-          </Button>
-        </Form>
-      </Card>
-    </Spin>
+        </Col>
+      </Row>
+    </ProfileDashboardLayout>
   );
 }

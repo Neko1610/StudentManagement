@@ -150,10 +150,7 @@ export default function AdminSubjects() {
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 700, fontFamily: 'Manrope' }}>Current Curriculum</span>
-            <Space>
-              <Button type="text" icon={<FilterOutlined />} />
-              <Button type="text" icon={<DownloadOutlined />} />
-            </Space>
+            
           </div>
         }
       >

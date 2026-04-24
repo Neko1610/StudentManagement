@@ -1,11 +1,10 @@
-import { Card, Row, Col, Statistic, Spin, Typography, Space, Table, Tag, Avatar, Button } from 'antd';
-import { 
-  TeamOutlined, 
-  UserOutlined, 
-  DashboardOutlined,
-  SolutionOutlined,
+import { Avatar, Button, Card, Col, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import {
   ArrowUpOutlined,
-  MoreOutlined
+  ReadOutlined,
+  SolutionOutlined,
+  TeamOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { adminService } from '../../api/adminService';
@@ -45,7 +44,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Hoạt động gần đây (Mock data theo mẫu UI)
   const recentActivity = [
     { key: '1', student: 'Alex Rivera', action: 'New Registration', class: 'Advanced Physics II', date: '2 mins ago', status: 'Enrolled' },
     { key: '2', student: 'Sarah Jenkins', action: 'Profile Edit', class: 'Humanities 101', date: '45 mins ago', status: 'Updated' },
@@ -54,101 +52,99 @@ export default function AdminDashboard() {
 
   const columns = [
     {
-      title: 'STUDENT',
+      title: 'Student',
       dataIndex: 'student',
       render: (text: string) => (
         <Space>
           <Avatar src={`https://i.pravatar.cc/150?u=${text}`} />
-          <Text strong style={{ fontSize: '13px' }}>{text}</Text>
+          <Text strong>{text}</Text>
         </Space>
       ),
     },
-    { title: 'ACTION', dataIndex: 'action', render: (text: string) => <Text style={{ fontSize: '12px' }}>{text}</Text> },
-    { title: 'COURSE/CLASS', dataIndex: 'class', render: (text: string) => <Text style={{ fontSize: '12px' }}>{text}</Text> },
-    { title: 'DATE', dataIndex: 'date', render: (text: string) => <Text type="secondary" style={{ fontSize: '12px' }}>{text}</Text> },
+    { title: 'Action', dataIndex: 'action' },
+    { title: 'Course / Class', dataIndex: 'class' },
+    { title: 'Date', dataIndex: 'date', render: (text: string) => <Text type="secondary">{text}</Text> },
     {
-      title: 'STATUS',
+      title: 'Status',
       dataIndex: 'status',
       render: (status: string) => (
-        <Tag color={status === 'Enrolled' || status === 'Completed' ? 'green' : 'blue'} style={{ borderRadius: '6px', fontWeight: 600 }}>
-          {status.toUpperCase()}
+        <Tag color={status === 'Enrolled' || status === 'Completed' ? 'green' : 'blue'}>
+          {status}
         </Tag>
       ),
     },
   ];
 
-  // Styles đồng bộ mẫu UI
-  const cardStyle = {
-    borderRadius: '16px',
-    border: 'none',
-    boxShadow: '0 10px 30px rgba(25, 28, 29, 0.04)',
-    background: '#ffffff',
-  };
-
-  const iconContainerStyle = (color: string) => ({
-    width: '48px',
-    height: '48px',
-    borderRadius: '12px',
-    backgroundColor: `${color}15`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: color,
-    fontSize: '20px',
-    marginBottom: '16px'
-  });
+  const statItems = [
+    {
+      label: 'Students',
+      value: stats.studentCount,
+      color: '#4f46e5',
+      bg: '#eef2ff',
+      icon: <TeamOutlined />,
+      trend: '+12%',
+    },
+    {
+      label: 'Teachers',
+      value: stats.teacherCount,
+      color: '#0f766e',
+      bg: '#ccfbf1',
+      icon: <UserOutlined />,
+      trend: '+3',
+    },
+    {
+      label: 'Parents',
+      value: stats.parentCount,
+      color: '#2563eb',
+      bg: '#dbeafe',
+      icon: <SolutionOutlined />,
+      trend: 'Stable',
+    },
+  ];
 
   return (
     <Spin spinning={loading} size="large">
-      <div style={{ padding: '40px', backgroundColor: '#f8f9fa', minHeight: '100vh', fontFamily: '"Inter", sans-serif' }}>
-        
-        {/* Header Section */}
-        <div style={{ marginBottom: '40px' }}>
-          <Space direction="vertical" size={0}>
-            <Title level={2} style={{ margin: 0, fontWeight: 800, fontFamily: '"Manrope", sans-serif', letterSpacing: '-0.025em' }}>
-              System Overview
-            </Title>
-            <Text style={{ color: '#464555', fontSize: '15px' }}>
-              Real-time performance analytics for the 2024 academic year.
-            </Text>
-          </Space>
+      <div className="page-stack">
+        <div className="page-heading">
+          <div>
+            <Title level={2} className="page-title">System Overview</Title>
+            <div className="page-subtitle">
+              Real-time academic operations across students, teachers, and families.
+            </div>
+          </div>
+          <Button type="primary" icon={<ReadOutlined />}>Academic Year 2026</Button>
         </div>
 
-        {/* Statistics Row */}
-        <Row gutter={[24, 24]} style={{ marginBottom: '32px' }}>
-          {[
-            { label: 'TOTAL STUDENTS', value: stats.studentCount, color: '#3525cd', icon: <TeamOutlined />, trend: '+12%' },
-            { label: 'TOTAL TEACHERS', value: stats.teacherCount, color: '#58579b', icon: <UserOutlined />, trend: '+3' },
-            { label: 'TOTAL PARENTS', value: stats.parentCount, color: '#7e3000', icon: <SolutionOutlined />, trend: 'Stable' },
-          ].map((item, idx) => (
-            <Col xs={24} sm={12} lg={8} key={idx}>
-              <Card style={{ ...cardStyle, borderLeft: `4px solid ${item.color}` }} bodyStyle={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={iconContainerStyle(item.color)}>{item.icon}</div>
-                  <Tag color="green" style={{ borderRadius: '20px', border: 'none', fontWeight: 700 }}>{item.trend}</Tag>
+        <Row gutter={[24, 24]}>
+          {statItems.map((item) => (
+            <Col xs={24} sm={12} lg={8} key={item.label}>
+              <Card className="stat-card">
+                <div className="stat-icon" style={{ color: item.color, background: item.bg }}>
+                  {item.icon}
                 </div>
-                <Statistic
-                  title={<Text strong style={{ color: '#464555', fontSize: '11px', letterSpacing: '0.1em' }}>{item.label}</Text>}
-                  value={item.value}
-                  valueStyle={{ fontWeight: 800, fontSize: '32px', color: '#191c1d', fontFamily: '"Manrope", sans-serif' }}
-                />
+                <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <Statistic
+                    title={item.label}
+                    value={item.value}
+                    valueStyle={{ color: '#172033', fontSize: 34, fontWeight: 800 }}
+                  />
+                  <Tag color="green" icon={<ArrowUpOutlined />}>{item.trend}</Tag>
+                </Space>
               </Card>
             </Col>
           ))}
         </Row>
 
-        {/* Recent Activity Table */}
-        <Card 
-          style={cardStyle} 
-          title={<Title level={4} style={{ margin: 0, fontWeight: 700 }}>Recent Activity</Title>}
-          extra={<Button type="link" style={{ fontWeight: 700, color: '#3525cd' }}>View All Registry</Button>}
+        <Card
+          title="Recent Activity"
+          extra={<Button type="link">View all</Button>}
           bodyStyle={{ padding: 0 }}
         >
-          <Table 
-            columns={columns} 
-            dataSource={recentActivity} 
-            pagination={false} 
-            style={{ borderRadius: '0 0 16px 16px', overflow: 'hidden' }}
+          <Table
+            columns={columns}
+            dataSource={recentActivity}
+            pagination={false}
+            scroll={{ x: 760 }}
           />
         </Card>
       </div>

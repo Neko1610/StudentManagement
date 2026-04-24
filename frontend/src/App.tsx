@@ -46,8 +46,37 @@ function App() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#1890ff',
-          borderRadius: 6,
+          colorPrimary: '#635bff',
+          colorInfo: '#3b82f6',
+          colorSuccess: '#16a34a',
+          colorWarning: '#f59e0b',
+          colorError: '#ef4444',
+          colorText: '#172033',
+          colorTextSecondary: '#667085',
+          colorBgLayout: '#f5f7fb',
+          colorBgContainer: '#ffffff',
+          colorBorder: '#e7ebf3',
+          borderRadius: 12,
+          fontFamily:
+            'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          boxShadow:
+            '0 16px 40px rgba(23, 32, 51, 0.08), 0 2px 8px rgba(23, 32, 51, 0.04)',
+        },
+        components: {
+          Button: {
+            borderRadius: 10,
+            controlHeight: 40,
+            fontWeight: 600,
+          },
+          Card: {
+            borderRadiusLG: 16,
+            paddingLG: 24,
+          },
+          Table: {
+            headerBg: '#f8fafc',
+            headerColor: '#667085',
+            rowHoverBg: '#f7f9ff',
+          },
         },
       }}
     >

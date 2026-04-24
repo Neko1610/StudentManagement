@@ -1,14 +1,18 @@
-import { Card, Form, Button, Input, message, Spin } from 'antd';
-import { useState, useEffect } from 'react';
+import { Col, Form, Input, Row, message } from 'antd';
+import { useEffect, useState } from 'react';
+import ProfileDashboardLayout from '../../components/ProfileDashboardLayout';
 import { teacherService } from '../../api/teacherService';
 import { Teacher } from '../../types';
 import { auth } from '../../utils/auth';
+
+const inputStyle = { borderRadius: 12, minHeight: 42 };
 
 export default function TeacherProfile() {
   const user = auth.getUser();
 
   const [profile, setProfile] = useState<Teacher | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -17,9 +21,7 @@ export default function TeacherProfile() {
 
   const loadProfile = async () => {
     try {
-      console.log("EMAIL:", user?.email); // debug
-
-      const data = await teacherService.getProfile(user?.email || ''); // 🔥 FIX
+      const data = await teacherService.getProfile(user?.email || '');
       setProfile(data);
 
       form.setFieldsValue({
@@ -30,7 +32,6 @@ export default function TeacherProfile() {
         specialization: data.specialization,
         qualifications: data.qualifications,
       });
-
     } catch (error) {
       console.error(error);
       message.error('Failed to load profile');
@@ -41,11 +42,10 @@ export default function TeacherProfile() {
 
   const handleSaveProfile = async (values: any) => {
     try {
-      await teacherService.updateProfile(user?.id || '', values); // ✔ vẫn dùng id
+      await teacherService.updateProfile(user?.id || '', values);
       message.success('Profile updated successfully');
-
-      loadProfile(); // 🔥 reload lại
-
+      setEditing(false);
+      loadProfile();
     } catch (error) {
       console.error(error);
       message.error('Failed to update profile');
@@ -53,39 +53,59 @@ export default function TeacherProfile() {
   };
 
   return (
-    <Spin spinning={loading}>
-      <Card title="My Profile">
-        <Form form={form} layout="vertical" onFinish={handleSaveProfile}>
-          
+    <ProfileDashboardLayout
+      loading={loading}
+      form={form}
+      fullName={profile?.fullName}
+      role="Teacher"
+      description={profile?.specialization || profile?.email || 'Giáo viên phụ trách giảng dạy'}
+      avatarSrc={profile?.avatar}
+      stats={[
+        { label: 'Classes', value: profile?.homeroomClassName ? '1' : '0' },
+        { label: 'Students', value: '--' },
+        { label: 'Rating', value: '4.9' },
+      ]}
+      editing={editing}
+      onEdit={() => setEditing(true)}
+      onFinish={handleSaveProfile}
+    >
+      <Row gutter={[18, 8]}>
+        <Col xs={24} md={12}>
           <Form.Item label="Full Name" name="fullName">
-            <Input />
+            <Input disabled={!editing} style={inputStyle} />
           </Form.Item>
+        </Col>
 
+        <Col xs={24} md={12}>
           <Form.Item label="Email" name="email">
-            <Input disabled /> {/* 🔥 không cho sửa email */}
+            <Input disabled style={inputStyle} />
           </Form.Item>
+        </Col>
 
+        <Col xs={24} md={12}>
           <Form.Item label="Phone" name="phone">
-            <Input />
+            <Input disabled={!editing} style={inputStyle} />
           </Form.Item>
+        </Col>
 
+        <Col xs={24} md={12}>
           <Form.Item label="Address" name="address">
-            <Input />
+            <Input disabled={!editing} style={inputStyle} />
           </Form.Item>
+        </Col>
 
+        <Col xs={24} md={12}>
           <Form.Item label="Specialization" name="specialization">
-            <Input />
+            <Input disabled={!editing} style={inputStyle} />
           </Form.Item>
+        </Col>
 
+        <Col xs={24} md={12}>
           <Form.Item label="Qualifications" name="qualifications">
-            <Input.TextArea />
+            <Input disabled={!editing} style={inputStyle} />
           </Form.Item>
-
-          <Button type="primary" htmlType="submit">
-            Save Profile
-          </Button>
-        </Form>
-      </Card>
-    </Spin>
+        </Col>
+      </Row>
+    </ProfileDashboardLayout>
   );
 }

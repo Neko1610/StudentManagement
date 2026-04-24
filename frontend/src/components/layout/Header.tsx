@@ -1,14 +1,29 @@
-import { Layout, Button, Dropdown, Space, Badge, Drawer } from 'antd';
+import {
+  Avatar,
+  Badge,
+  Drawer,
+  Dropdown,
+  Input,
+  Layout,
+  Space,
+  Typography,
+} from 'antd';
 import type { MenuProps } from 'antd';
-import { LogoutOutlined, BellOutlined, UserOutlined, MenuOutlined, CloseOutlined } from '@ant-design/icons';
+import {
+  BellOutlined,
+  LogoutOutlined,
+  SearchOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../utils/auth';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { commonService } from '../../api/commonService';
 import { Notification } from '../../types';
 import styles from './Header.module.css';
 
 const { Header } = Layout;
+const { Text } = Typography;
 
 export default function AppHeader() {
   const navigate = useNavigate();
@@ -41,10 +56,8 @@ export default function AppHeader() {
       {
         key: 'profile',
         icon: <UserOutlined />,
-        label: 'Profile',
-        onClick: () => {
-          navigate(`/${user?.role.toLowerCase()}/profile`);
-        },
+        label: user?.fullName || 'Account',
+        disabled: true,
       },
       {
         type: 'divider',
@@ -61,25 +74,44 @@ export default function AppHeader() {
   return (
     <>
       <Header className={styles.header}>
-        <div className={styles.headerContainer}>
-          <div className={styles.headerLeft}>
-            <h1 className={styles.logo}>School Management</h1>
+        <div className={styles.container}>
+          <div className={styles.titleBlock}>
+            <Text className={styles.eyebrow}>Student Management System</Text>
+            <div className={styles.logo}>Dashboard</div>
           </div>
-          <div className={styles.headerRight}>
-            <Space>
-              <Badge count={unreadCount}>
-                <Button
-                  type="text"
-                  icon={<BellOutlined style={{ fontSize: 18 }} />}
-                  onClick={() => setDrawerVisible(true)}
+
+          <Input
+            className={styles.search}
+            prefix={<SearchOutlined />}
+            placeholder="Search students, classes, tuition..."
+            allowClear
+          />
+
+          <div className={styles.right}>
+            <Badge count={unreadCount} size="small">
+              <button
+                type="button"
+                className={styles.iconButton}
+                onClick={() => setDrawerVisible(true)}
+                aria-label="Open notifications"
+              >
+                <BellOutlined />
+              </button>
+            </Badge>
+
+            <Dropdown menu={userMenu} trigger={['click']}>
+              <button type="button" className={styles.userButton}>
+                <Avatar
+                  src={user?.avatar}
+                  icon={!user?.avatar && <UserOutlined />}
+                  className={styles.avatar}
                 />
-              </Badge>
-              <Dropdown menu={userMenu} trigger={['click']}>
-                <Button type="text" icon={<UserOutlined />}>
-                  {user?.fullName}
-                </Button>
-              </Dropdown>
-            </Space>
+                <span className={styles.userText}>
+                  <span>{user?.fullName || 'User'}</span>
+                  <small>{user?.role || 'Account'}</small>
+                </span>
+              </button>
+            </Dropdown>
           </div>
         </div>
       </Header>
@@ -89,11 +121,12 @@ export default function AppHeader() {
         placement="right"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
+        width={420}
       >
         {notifications.length === 0 ? (
-          <p>No notifications</p>
+          <div className={styles.emptyState}>No notifications</div>
         ) : (
-          <div className={styles.notifications}>
+          <Space direction="vertical" size={12} className={styles.notifications}>
             {notifications.map((notification) => (
               <div
                 key={notification.id}
@@ -106,7 +139,7 @@ export default function AppHeader() {
                 <small>{new Date(notification.createdAt).toLocaleString()}</small>
               </div>
             ))}
-          </div>
+          </Space>
         )}
       </Drawer>
     </>

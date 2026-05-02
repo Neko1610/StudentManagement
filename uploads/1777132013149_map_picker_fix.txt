@@ -1,0 +1,155 @@
+Gap Analysis
+
+This codebase is a decent prototype, not a production-ready e-commerce system yet. The biggest problems are insecure backend authorization, checkout integrity gaps, several broken API contracts between clients and backend, and a lot of “looks implemented in UI but not really implemented in business logic.”
+
+🔥 Critical
+
+Product and Category admin writes are publicly exposed. In SecurityConfig.java (line 30), /api/products/** and /api/categories/** are permitAll(), which means anyone can create/delete catalog data because ProductController.java (line 97) and CategoryController.java (line 36) do not enforce admin checks.
+Fix: split public read routes from admin write routes, e.g. GET /api/products/** public, POST/PUT/DELETE /api/admin/products/** admin only.
+
+Voucher CRUD and variant mutation are not admin-protected. VoucherController.java (line 32) and VariantController.java (line 25) rely only on global auth, so any logged-in customer can modify vouchers and variants.
+Fix: move them under /api/admin/** or call userService.requireAdmin() in every write endpoint.
+
+Checkout bypasses voucher validation entirely. In OrderService.java (line 83), checkout only checks voucher existence, not active, expiryDate, or minOrder, even though VoucherService.java (line 54) already has that logic.
+Fix: reuse voucherService.applyVoucher(...) or a shared validator before calculating discount.
+
+Checkout never validates stock and never decrements stock. OrderService.java (line 62) calculates totals only; it does not reject oversold variants or reduce inventory after order creation.
+Fix: inside the transaction, check variant.getStock() >= qty, then variant.setStock(variant.getStock() - qty) and save.
+
+Cart operations are vulnerable to IDOR and broken ownership logic. CartService.java (line 63) deletes by cart id only, and CartService.java (line 67) updates by cart id only, without verifying the item belongs to the authenticated user.
+Fix: query by id + userId, not plain id.
+
+Shipping fee calculation leaks other users’ addresses. ShippingController.java (line 29) loads any addressId directly, without checking the address email against the JWT user.
+Fix: resolve address with findByIdAndEmail(addressId, currentEmail).
+
+Secrets are committed in source. application.properties (line 2) contains DB credentials, JwtUtil.java (line 13) hardcodes the signing key, and firebase-service-account.json exists in src/main/resources.
+Fix: move all secrets to environment variables or external secret storage, rotate them, and remove committed credentials from git history.
+
+Mobile cart update/delete is calling the wrong id. cart_screen.dart (line 76) sends item.variantId to update quantity, but backend expects cart item id. cart_item_widget.dart (line 21) also uses item.variantId for update/delete.
+Fix: always call cart APIs with item.id, not variantId.
+
+Mobile voucher apply endpoint is wrong, so voucher input is effectively broken. cart_service.dart (line 61) calls /api/voucher/apply, but backend route is /api/vouchers/apply in VoucherController.java (line 50).
+Fix: change the app path to /api/vouchers/apply.
+
+Admin product edit is broken by contract mismatch. Dashboard calls PUT /products/{id} in productService.ts (line 46), but backend has no @PutMapping("/{id}") in ProductController.java (line 39).
+Fix: implement update endpoint or change dashboard behavior.
+
+Admin user list is broken by route mismatch. Dashboard calls /users in userService.ts (line 22), while backend exposes /api/admin/users in AdminUserController.java (line 13).
+Fix: point dashboard to /admin/users.
+
+⚡ Important
+
+Dashboard auth is not really admin auth. authService.ts (line 63) accepts any pasted JWT, and userService.ts (line 17) force-labels the profile as 'Administrator'. A normal user token can enter the dashboard shell.
+Fix: verify role from backend and block non-admin users before rendering admin routes.
+
+Product image handling is inconsistent. Backend accepts product.image on create, but response mapping in ProductController.java (line 169) ignores it and derives the product image from the first variant image. Products without variants can come back blank.
+Fix: fall back to p.getImage() when no variant image exists.
+
+Mobile route config is incomplete. main.dart (line 55) only registers /login, /register, /home, but product_detail_screen.dart (line 194) navigates to /cart.
+Fix: either add a /cart route or navigate with MaterialPageRoute.
+
+Category screen can spin forever on empty product results. category_screen.dart (line 70) shows a loading spinner whenever products.isEmpty, instead of checking provider.isLoading.
+Fix: branch on isLoading, then render an empty state when loading is false.
+
+Order detail screen can hang forever on API failure. order_detail_screen.dart (line 39) catches errors but never sets isLoading = false.
+Fix: set error state and stop loading in catch.
+
+Order detail widgets don’t match backend payload keys. order_address.dart (line 26) expects receiverName, which backend never sends. order_summary.dart (line 14) expects shipping and tax, but backend sends shippingFee and no tax field.
+Fix: align widget fields to backend DTOs.
+
+Checkout uses hardcoded phone and inconsistent currency math. checkout_screens.dart (line 95) sends "0123456789" instead of real user data, and checkout_screens.dart (line 72) divides shipping by 24000 while other values are treated like dollars in some places and VND in others.
+Fix: define a single currency strategy and use actual phone from profile/address.
+
+Analytics are fake. DashboardPage.tsx (line 14) uses hardcoded chartData, and DashboardPage.tsx (line 82) says “All systems ready” regardless of backend state.
+Fix: replace with real aggregated APIs for revenue, order counts, conversion, top products.
+
+Search/filter/sort are far from production level. Backend product search is in-memory in ProductController.java (line 68), with no sort, price filters, stock filter, brand filter, or pagination.
+Fix: move filtering/sorting to repository queries with pageable endpoints.
+
+No media upload implementation. There is no Cloudinary/S3/local upload API; dashboard just stores image URLs or base64 strings.
+Fix: add a proper media service and store media ids/URLs, not raw base64 in business entities.
+
+No reviews and ratings anywhere. There are no review models, endpoints, admin moderation tools, or mobile review UIs.
+Fix: add Review, rating, verifiedPurchase, moderation, aggregate score fields.
+
+🧩 Optional / Nice To Have
+
+Wishlist is app-local only via provider state, not persisted server-side.
+Payment methods screen in mobile is just UI scaffolding; no saved cards or wallet integration.
+Profile stats contain hardcoded voucher/points values in profile_stats.dart (line 51).
+Category UI only really supports a simple two-level admin interaction even though backend tree logic is more general.
+No customer notifications, email confirmations, refund flow, or return flow.
+Implemented Today
+
+Backend: Firebase login to backend JWT, profile read/update, category tree CRUD, product read/create/delete, variant CRUD, cart CRUD, address CRUD, voucher CRUD/apply, checkout, user order history/detail, admin order status update, admin user list/delete.
+Flutter app: login/register, home, category, product detail, cart, checkout, shipping addresses, profile, wishlist, order history/detail.
+Dashboard: login, product page, category page, voucher page, order page, user page, overview page.
+Missing vs Production Checklist
+
+Auth: missing refresh token, logout invalidation, password reset, email verification, session/device management.
+Product catalog: partial. Variants exist, but no safe admin boundaries, no robust update flow, no upload pipeline.
+Category: partial. Tree exists, but public writes are a blocker.
+Search/filter/sort: incomplete.
+Cart: partial but ownership/update bugs make it unsafe.
+Checkout: partial but not production-safe.
+Payment integration: effectively missing. Only paymentMethod string + COD-style flow.
+Order management: partial. Status exists, but no payment status, refund status, cancellation flow, audit trail.
+Inventory: incomplete and unsafe because stock is never reserved/decremented.
+User profile/address: mostly present.
+Voucher/discount: partial, with critical validation bypass in checkout.
+Reviews/ratings: missing.
+Admin overview: superficial only.
+Analytics: missing real analytics.
+Security: weak.
+Error handling: weak.
+Logging: debug prints instead of structured logging.
+Pagination: missing.
+Validation: missing.
+Performance: vulnerable to N+1.
+Bad Practices
+
+Direct entity exposure from controllers instead of response DTOs in several places.
+RuntimeException everywhere instead of typed exceptions and proper HTTP responses.
+Debug logging of tokens and headers in JwtFilter.java (line 50).
+spring.jpa.hibernate.ddl-auto=update in production config in application.properties (line 6).
+No @Valid, no request validation, no centralized exception handler.
+N+1 query patterns in ProductController.java (line 167) and OrderService.java (line 212).
+Exact Fix Direction
+
+// Example: lock product writes to admin only
+.requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+.requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+.requestMatchers("/api/admin/**").hasRole("ADMIN")
+// Example: secure cart update by owner
+public void updateQty(String email, Long cartItemId, int qty) {
+    User user = userRepository.findByEmail(email).orElseThrow();
+    CartItem item = cartRepository.findByIdAndUserId(cartItemId, user.getId())
+        .orElseThrow(() -> new RuntimeException("Cart item not found"));
+    if (qty < 1) throw new RuntimeException("Quantity must be >= 1");
+    item.setQuantity(qty);
+    cartRepository.save(item);
+}
+// Example: safe checkout stock validation
+if (variant.getStock() < qty) {
+    throw new RuntimeException("Insufficient stock for variant " + variant.getId());
+}
+variant.setStock(variant.getStock() - qty);
+variantRepo.save(variant);
+// dashboard/src/services/userService.ts
+const { data } = await api.get('/admin/users');
+// ecommerce_app/lib/services/cart_service.dart
+Uri.parse("http://10.0.2.2:8080/api/vouchers/apply")
+// cart update/delete must use cart item id
+await _service.updateQuantity(item.id, newQty);
+await _service.deleteItem(item.id);
+Scores
+
+Backend: 43/100
+Flutter app: 52/100
+Dashboard: 56/100
+Overall production readiness: 38%
+Verification
+
+mvnw test passed, but there are effectively no backend tests. npm run build passed for the dashboard. flutter analyze reported 63 issues/warnings, including async-context misuse, unused imports, naming issues, and production print usage.
+
+If you want, I can turn this into a prioritized implementation roadmap next: Phase 1 security fixes, Phase 2 checkout/inventory stabilization, Phase 3 admin/API contract cleanup.

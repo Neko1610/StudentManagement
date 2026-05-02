@@ -1,286 +1,340 @@
 import {
-  Card, Table, Button, Modal,
-  Form, Select, InputNumber,
-  message
+  Table,
+  Button,
+  Modal,
+  Form,
+  InputNumber,
+  Select,
+  message,
+  Card,
+  Spin
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { teacherService } from '../../api/teacherService';
 import { auth } from '../../utils/auth';
 
 export default function TeacherScores() {
-  const user = auth.getUser();
-
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [scores, setScores] = useState<any[]>([]);
+  const [teacher, setTeacher] = useState<any>(null);
 
-  const [selectedClass, setSelectedClass] = useState<number>();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingScore, setEditingScore] = useState<any>(null);
+  const [selectedClassId, setSelectedClassId] = useState<number>();
+  const [semester, setSemester] = useState<number>(1);
+
+  const [exportType, setExportType] = useState<'excel' | 'pdf'>('excel');
+  const [loadingExport, setLoadingExport] = useState(false);
+
+  const [open, setOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
   const [form] = Form.useForm();
 
-  // 🔥 LOAD INIT
+  const user = auth.getUser();
+
+  // ================= INIT =================
   useEffect(() => {
-    if (user?.email) {
-      loadInit();
-    }
+    if (!user?.email) return;
+
+    const load = async () => {
+      const t = await teacherService.getProfile(user.email);
+      setTeacher(t);
+
+      const cls = await teacherService.getClasses(user.email);
+      setClasses(cls);
+    };
+
+    load();
   }, [user?.email]);
 
-  const loadInit = async () => {
-    const cls = await teacherService.getClasses(user!.email);
-    const sub = await teacherService.getSubjects();
+  // ================= LOAD =================
+  const fetchStudents = async (classId: number) => {
+    setSelectedClassId(classId);
 
-    setClasses(cls);
-    setSubjects(sub);
+    if (!user?.email) return;
+
+    const studentsRes = await teacherService.getStudentsByClass(classId);
+    const scoresRes = await teacherService.getScoresByClass(
+      classId,
+      user.email
+    );
+
+    const merged = studentsRes.map((s: any) => ({
+      ...s,
+      scores: scoresRes.filter((sc: any) => sc.studentId === s.id)
+    }));
+
+    setStudents(merged);
   };
 
-  // 🔥 LOAD DATA THEO CLASS
-  const loadData = async (classId: number) => {
-    setSelectedClass(classId);
+  // ================= HELPER =================
+  const getScore = (r: any) =>
+    r.scores?.find(
+      (s: any) => s.subjectName === teacher?.subject?.name
+    );
 
-    const stu = await teacherService.getStudentsByClass(classId);
-    const sc = await teacherService.getScoresByClass(classId);
+  // ================= EXPORT =================
+  const handleExport = async () => {
+    if (!selectedClassId) {
+      message.error('Chọn lớp trước');
+      return;
+    }
 
-    setStudents(stu);
-    setScores(sc);
-  };
+    setLoadingExport(true);
 
-  // 🔥 CALC AVERAGE
-  const calcAverage = (r: any): string => {
-    const tx = [r.oral1, r.test15_1].filter(v => v != null);
-
-    const sumTX = tx.reduce((a, b) => a + b, 0);
-    const countTX = tx.length;
-
-    const mid = r.mid1 || 0;
-    const final = r.final1 || 0;
-
-    if (countTX === 0) return "0.00"; // ✅ FIX
-
-    const avg = (sumTX + 2 * mid + 3 * final) / (countTX + 5);
-
-    return avg.toFixed(2);
-  };
-  // 🔥 CREATE / UPDATE
-  const handleSubmit = async () => {
     try {
-      const values = await form.validateFields();
+      let blob;
+      let fileName;
 
-      const payload = {
-        student: { id: values.studentId },
-        subject: { id: values.subjectId },
-
-        oral1: values.oral1,
-        test15_1: values.test15,
-        mid1: values.mid,
-        final1: values.final
-      };
-
-      if (editingScore) {
-        await teacherService.updateScore(editingScore.id, payload);
-        message.success("Cập nhật thành công");
+      if (exportType === 'excel') {
+        blob = await teacherService.exportScoreExcel(
+          selectedClassId,
+          semester
+        );
+        fileName = `BangDiem_Lop${selectedClassId}_HK${semester}.xlsx`;
       } else {
-        await teacherService.createScore(payload);
-        message.success("Thêm thành công");
+        blob = await teacherService.exportScorePDF(
+          selectedClassId,
+          semester
+        );
+        fileName = `BangDiem_Lop${selectedClassId}_HK${semester}.pdf`;
       }
 
-      setModalOpen(false);
-      setEditingScore(null);
-      form.resetFields();
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
 
-      if (selectedClass) loadData(selectedClass);
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
 
-    } catch {
-      message.error("Lỗi");
+    } catch (err) {
+      console.error(err);
+      message.error('Lỗi export');
+    } finally {
+      setLoadingExport(false);
     }
   };
 
-  // 🔥 EDIT
-  const handleEdit = (r: any) => {
-    setEditingScore(r);
-    setModalOpen(true);
-
-    form.setFieldsValue({
-      studentId: r.student?.id,
-      subjectId: r.subject?.id,
-      oral1: r.oral1,
-      test15: r.test15_1,
-      mid: r.mid1,
-      final: r.final1
-    });
+  // ================= MODAL =================
+  const openAdd = (student: any) => {
+    setSelectedStudent(student);
+    setOpen(true);
+    form.setFieldsValue({ semester });
   };
 
-  // 🔥 DELETE
-  const handleDelete = async (id: number) => {
-    await teacherService.deleteScore(id);
-    message.success("Đã xóa");
+  // ================= SUBMIT =================
+  const handleSubmit = async () => {
+    const values = await form.validateFields();
 
-    if (selectedClass) loadData(selectedClass);
+    const data = {
+      student: { id: selectedStudent.id },
+      subject: { id: teacher.subject.id },
+      semester: values.semester,
+      ...values
+    };
+
+    try {
+      const found = students
+        .flatMap((s: any) => s.scores || [])
+        .find(
+          (sc: any) =>
+            sc.studentId === selectedStudent.id &&
+            sc.subjectName === teacher.subject.name
+        );
+
+      if (found) {
+        await teacherService.updateScore(found.id, data, values.semester);
+        message.success('Cập nhật thành công');
+      } else {
+        await teacherService.createScore(data);
+        message.success('Thêm thành công');
+      }
+
+      setOpen(false);
+      fetchStudents(selectedClassId!);
+
+    } catch (err) {
+      console.error(err);
+      message.error('Lỗi lưu điểm');
+    }
   };
-  const handleExport = async () => {
-    if (!selectedClass) return;
 
-    const blob = await teacherService.exportScoreExcel(selectedClass);
-
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-
-    a.href = url;
-    a.download = "scores.xlsx";
-    a.click();
-  };
-  // 🔥 TABLE
+  // ================= TABLE =================
   const columns = [
+    { title: 'Tên học sinh', dataIndex: 'fullName' },
     {
-      title: 'Student',
-      render: (_: any, r: any) => r.student?.fullName
-    },
-    {
-      title: 'Subject',
-      render: (_: any, r: any) => r.subject?.name
-    },
-    { title: 'Oral', dataIndex: 'oral1' },
-    { title: '15p', dataIndex: 'test15_1' },
-    { title: 'Mid', dataIndex: 'mid1' },
-    { title: 'Final', dataIndex: 'final1' },
-
-    // 🔥 AVERAGE
-    {
-      title: 'Average',
+      title: 'Miệng',
       render: (_: any, r: any) => {
-        const avg = parseFloat(calcAverage(r));
-
-        let color = 'black';
-        if (avg >= 8) color = 'green';
-        else if (avg < 5) color = 'red';
-
-        return <b style={{ color }}>{avg}</b>;
+        const s = getScore(r);
+        return semester === 1 ? s?.oral1 ?? '-' : s?.oral2 ?? '-';
       }
     },
-
-    // 🔥 ACTION
     {
-      title: 'Action',
-      render: (_: any, r: any) => (
-        <>
-          <Button onClick={() => handleEdit(r)} style={{ marginRight: 8 }}>
-            Edit
-          </Button>
+      title: '15p',
+      render: (_: any, r: any) => {
+        const s = getScore(r);
+        return semester === 1 ? s?.test15_1 ?? '-' : s?.test15_2 ?? '-';
+      }
+    },
+    {
+      title: 'Giữa kì',
+      render: (_: any, r: any) => {
+        const s = getScore(r);
+        return semester === 1 ? s?.mid1 ?? '-' : s?.mid2 ?? '-';
+      }
+    },
+    {
+      title: 'Cuối kì',
+      render: (_: any, r: any) => {
+        const s = getScore(r);
+        return semester === 1 ? s?.final1 ?? '-' : s?.final2 ?? '-';
+      }
+    },
+    {
+      title: 'Tổng',
+      render: (_: any, r: any) => {
+        const s = getScore(r);
 
-          <Button danger onClick={() => handleDelete(r.id)}>
-            Delete
-          </Button>
-        </>
+        let oral, test, mid, final;
+
+        if (semester === 1) {
+          oral = s?.oral1;
+          test = s?.test15_1;
+          mid = s?.mid1;
+          final = s?.final1;
+        } else {
+          oral = s?.oral2;
+          test = s?.test15_2;
+          mid = s?.mid2;
+          final = s?.final2;
+        }
+
+        if (!oral && !test && !mid && !final) return '-';
+
+        const avg =
+          ((oral || 0) +
+            (test || 0) +
+            (mid || 0) * 2 +
+            (final || 0) * 3) / 7;
+
+        let color = '';
+        if (avg >= 8) color = '#52c41a';
+        else if (avg >= 5) color = '#faad14';
+        else color = '#ff4d4f';
+
+        return (
+          <span style={{ color, fontWeight: 600 }}>
+            {avg.toFixed(1)}
+          </span>
+        );
+      }
+    },
+    {
+      title: 'Hành động',
+      render: (_: any, record: any) => (
+        <Button onClick={() => openAdd(record)} type="primary">
+          Nhập điểm
+        </Button>
       )
     }
   ];
 
+  // ================= UI =================
   return (
-    <Card title="Scores">
-
-      {/* SELECT CLASS */}
-      <Select
-        placeholder="Chọn lớp"
-        style={{ width: 200 }}
-        onChange={loadData}
-      >
-        {classes.map(c => (
-          <Select.Option key={c.id} value={c.id}>
-            {c.name}
-          </Select.Option>
-        ))}
-      </Select>
-
-      {/* ADD */}
-      <Button
-        type="primary"
-        style={{ marginLeft: 10 }}
-        disabled={!selectedClass}
-        onClick={() => {
-          setEditingScore(null);
-          form.resetFields();
-          setModalOpen(true);
-        }}
-      >
-        Add Score
-      </Button>
-      <Button
-        style={{ marginLeft: 10 }}
-        disabled={!selectedClass}
-        onClick={handleExport}
-      >
-        Export Excel
-      </Button>
-      {/* TABLE */}
-      <Table
-        dataSource={scores}
-        columns={columns}
-        rowKey="id"
-        style={{ marginTop: 20 }}
-      />
-
-      {/* MODAL */}
-      <Modal
-        title="Add Score"
-        open={modalOpen}
-        onCancel={() => {
-          setModalOpen(false);
-          setEditingScore(null);
-          form.resetFields();
-        }}
-        onOk={handleSubmit}
-      >
-        <Form form={form} layout="vertical">
-
-          <Form.Item
-            name="studentId"
-            label="Student"
-            rules={[{ required: true }]}
+    <Spin spinning={loadingExport}>
+      <Card title="📊 Nhập điểm">
+        <div style={{ marginBottom: 16 }}>
+          <Select
+            placeholder="Chọn lớp"
+            style={{ width: 200 }}
+            onChange={fetchStudents}
           >
-            <Select placeholder="Chọn học sinh">
-              {students.map(s => (
-                <Select.Option key={s.id} value={s.id}>
-                  {s.fullName}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+            {classes.map(c => (
+              <Select.Option key={c.id} value={c.id}>
+                {c.name}
+              </Select.Option>
+            ))}
+          </Select>
 
-          <Form.Item
-            name="subjectId"
-            label="Subject"
-            rules={[{ required: true }]}
+          <Select
+            value={semester}
+            onChange={setSemester}
+            style={{ width: 120, marginLeft: 10 }}
           >
-            <Select placeholder="Chọn môn">
-              {subjects.map(s => (
-                <Select.Option key={s.id} value={s.id}>
-                  {s.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+            <Select.Option value={1}>HK1</Select.Option>
+            <Select.Option value={2}>HK2</Select.Option>
+          </Select>
 
-          <Form.Item name="oral1" label="Oral 1">
-            <InputNumber style={{ width: '100%' }} />
-          </Form.Item>
+          <Select
+            value={exportType}
+            onChange={setExportType}
+            style={{ width: 120, marginLeft: 10 }}
+          >
+            <Select.Option value="excel">Excel</Select.Option>
+            <Select.Option value="pdf">PDF</Select.Option>
+          </Select>
 
-          <Form.Item name="test15" label="15 min test">
-            <InputNumber style={{ width: '100%' }} />
-          </Form.Item>
+          <Button
+            type="primary"
+            style={{ marginLeft: 10 }}
+            onClick={handleExport}
+          >
+            Export
+          </Button>
+        </div>
 
-          <Form.Item name="mid" label="Midterm">
-            <InputNumber style={{ width: '100%' }} />
-          </Form.Item>
+        <Table rowKey="id" dataSource={students} columns={columns} />
 
-          <Form.Item name="final" label="Final">
-            <InputNumber style={{ width: '100%' }} />
-          </Form.Item>
+        <Modal
+          open={open}
+          onCancel={() => setOpen(false)}
+          onOk={handleSubmit}
+          title={`Nhập điểm - ${selectedStudent?.fullName}`}
+        >
+          <Form form={form} layout="vertical">
+            <Form.Item name="semester" label="Học kỳ">
+              <Select>
+                <Select.Option value={1}>HK1</Select.Option>
+                <Select.Option value={2}>HK2</Select.Option>
+              </Select>
+            </Form.Item>
 
-        </Form>
-      </Modal>
+            {semester === 1 && (
+              <>
+                <Form.Item name="oral1" label="Miệng">
+                  <InputNumber style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="test15_1" label="15p">
+                  <InputNumber style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="mid1" label="Giữa kỳ">
+                  <InputNumber style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="final1" label="Cuối kỳ">
+                  <InputNumber style={{ width: '100%' }} />
+                </Form.Item>
+              </>
+            )}
 
-    </Card>
+            {semester === 2 && (
+              <>
+                <Form.Item name="oral2" label="Miệng">
+                  <InputNumber style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="test15_2" label="15p">
+                  <InputNumber style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="mid2" label="Giữa kỳ">
+                  <InputNumber style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="final2" label="Cuối kỳ">
+                  <InputNumber style={{ width: '100%' }} />
+                </Form.Item>
+              </>
+            )}
+          </Form>
+        </Modal>
+      </Card>
+    </Spin>
   );
 }

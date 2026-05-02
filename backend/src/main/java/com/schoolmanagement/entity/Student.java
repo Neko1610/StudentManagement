@@ -47,6 +47,8 @@ public class Student {
 
     @Transient
     private Long classId;
+    @Column(nullable = false)
+    private Boolean active = true;
 
     // getters and setters omitted for brevity
     public String getClassName() {
@@ -59,6 +61,14 @@ public class Student {
 
     public Long getClassId() {
         return classId;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
     public void setClassId(Long classId) {

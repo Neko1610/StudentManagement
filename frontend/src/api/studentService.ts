@@ -19,10 +19,11 @@ export const studentService = {
       .get(`/students/email/${encodeURIComponent(email)}`)
       .then(res => res.data);
   },
-  updateProfile: (id: number, data: any) => {
-    return client.put(`/students/${id}`, data).then(res => res.data);
+  updateProfile: (id: number, data: any, classId: number) => {
+    return client.put(`/students/${id}`, data, {
+      params: { classId } // 🔥 QUAN TRỌNG
+    }).then(res => res.data);
   },
-
   getScores: (studentId: number) => {
     return client.get(`/scores/student/${studentId}`).then(res => res.data);
   },
@@ -33,7 +34,7 @@ export const studentService = {
   },
   getScoresByStudent: (studentId: number) =>
     client.get(`/scores/student/${studentId}`).then(res => res.data),
-  
+
   getAssignmentsByClass: (classId: number) =>
     client.get(`/assignments/class/${classId}`)
       .then(res => res.data || []),

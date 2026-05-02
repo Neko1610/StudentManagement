@@ -70,7 +70,7 @@ export default function Login() {
             letterSpacing: '-0.025em',
             fontFamily: '"Manrope", sans-serif'
           }}>
-            Scholastic Sanctuary
+            THPT Nguyễn Trãi
           </Title>
           <Text style={{ color: '#464555', fontWeight: 500 }}>Academic Atelier Administrative Portal</Text>
         </div>
@@ -187,7 +187,7 @@ export default function Login() {
               </div>
            </div>
            <Text style={{ fontSize: 11, color: '#777587', fontWeight: 700, letterSpacing: '0.2em', opacity: 0.5 }}>
-             © 2024 SCHOLASTIC SANCTUARY • V2.4.1
+             © 2026 THPT Nguyễn Trãi • V2.4.1
            </Text>
         </div>
       </div>

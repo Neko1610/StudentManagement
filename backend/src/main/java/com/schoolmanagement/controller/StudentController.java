@@ -49,7 +49,7 @@ public class StudentController {
         return ResponseEntity.ok(studentService.getByClass(classId));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STUDENT')")
     @PutMapping("/{id}")
     public ResponseEntity<Student> update(
             @PathVariable Long id,

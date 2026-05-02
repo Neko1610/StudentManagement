@@ -1,73 +1,120 @@
-import { Card, Form, Button, Input, message, Spin } from 'antd';
-import { useState, useEffect } from 'react';
+import { Col, Form, Input, Row, Select, message } from 'antd';
+import { useEffect, useState } from 'react';
+import ProfileDashboardLayout from '../../components/ProfileDashboardLayout';
 import { teacherService } from '../../api/teacherService';
-import { Teacher } from '../../types';
 import { auth } from '../../utils/auth';
+import client from '../../api/client';
 
 export default function TeacherProfile() {
   const user = auth.getUser();
-  const [profile, setProfile] = useState<Teacher | null>(null);
+  const email = user?.email;
+
+  const [profile, setProfile] = useState<any>(null);
+  const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
   const [form] = Form.useForm();
+  
+  const inputStyle = (disabled: boolean): React.CSSProperties => ({
+    borderRadius: 12,
+    height: 42,
+    background: disabled ? '#f5f6fa' : '#fff',
+  });
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    if (!email) return;
+    loadAll(email);
+  }, [email]);
 
-  const loadProfile = async () => {
+  const loadAll = async (email: string) => {
     try {
-      const data = await teacherService.getProfile(user?.id || '');
-      setProfile(data);
-      form.setFieldsValue(data);
-    } catch (error) {
-      message.error('Failed to load profile');
+      setLoading(true);
+
+      const profileData = await teacherService.getProfile(email);
+
+      setProfile(profileData);
+
+      form.setFieldsValue({
+        ...profileData
+      });
+
+    } catch (err) {
+      console.log(err);
+      message.error('Load failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveProfile = async (values: any) => {
+  const handleSave = async (values: any) => {
+    if (!profile?.id) return;
+
     try {
-      await teacherService.updateProfile(user?.id || '', values);
-      message.success('Profile updated successfully');
-    } catch (error) {
-      message.error('Failed to update profile');
+      const { email, subject, ...cleanValues } = values;
+
+      await client.put(`/teachers/${profile.id}`, cleanValues, {
+        params: {
+          subjectId: profile?.subject?.id // 🔥 QUAN TRỌNG NHẤT
+        }
+      });
+
+      message.success('Cập nhật thành công');
+      setEditing(false);
+      loadAll(email!);
+
+    } catch (err: any) {
+      console.log("❌ ERROR:", err.response?.data || err);
+      message.error('Update failed');
     }
   };
 
   return (
-    <Spin spinning={loading}>
-      <Card title="My Profile">
-        <Form form={form} layout="vertical" onFinish={handleSaveProfile}>
-          <Form.Item label="Full Name" name="fullName">
-            <Input />
+    <ProfileDashboardLayout
+      loading={loading}
+      form={form}
+      fullName={profile?.fullName}
+      role="Giáo viên"
+      description={
+        subjects.find(s => s.id === profile?.subjectId)?.name
+      }
+      avatarSrc={profile?.avatar}
+      editing={editing}
+      onEdit={() => setEditing(true)}
+      onFinish={handleSave}
+      profile={profile}
+    >
+      <Row gutter={[20, 14]}>
+        <Col span={12}>
+          <Form.Item label="Họ và tên" name="fullName">
+            <Input disabled={!editing} style={inputStyle(!editing)} />
           </Form.Item>
+        </Col>
 
+        <Col span={12}>
           <Form.Item label="Email" name="email">
-            <Input type="email" />
+            <Input disabled style={inputStyle(true)} />
           </Form.Item>
+        </Col>
 
-          <Form.Item label="Phone" name="phone">
-            <Input />
+        <Col span={12}>
+          <Form.Item label="Số điện thoại" name="phone">
+            <Input disabled={!editing} style={inputStyle(!editing)} />
           </Form.Item>
+        </Col>
 
-          <Form.Item label="Address" name="address">
-            <Input />
+        {/* 🔥 SUBJECT GIỐNG ADD SCORE */}
+        <Col span={12}>
+          <Form.Item label="Bộ môn">
+            <Input value={profile?.subject?.name} disabled />
           </Form.Item>
+        </Col>
 
-          <Form.Item label="Specialization" name="specialization">
-            <Input />
+        <Col span={24}>
+          <Form.Item label="Chứng chỉ" name="qualifications">
+            <Input.TextArea rows={4} disabled={!editing} />
           </Form.Item>
-
-          <Form.Item label="Qualifications" name="qualifications">
-            <Input.TextArea />
-          </Form.Item>
-
-          <Button type="primary" htmlType="submit">
-            Save Profile
-          </Button>
-        </Form>
-      </Card>
-    </Spin>
+        </Col>
+      </Row>
+    </ProfileDashboardLayout>
   );
 }

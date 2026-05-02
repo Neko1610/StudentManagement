@@ -1,5 +1,6 @@
 package com.schoolmanagement.controller;
 
+import com.schoolmanagement.dto.TuitionRequest;
 import com.schoolmanagement.entity.Tuition;
 import com.schoolmanagement.repository.TuitionRepository;
 import com.schoolmanagement.service.TuitionService;
@@ -45,10 +46,14 @@ public class TuitionController {
         return ResponseEntity.ok(tuitionService.getById(id));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','PARENT')")
     @PostMapping
-    public ResponseEntity<Tuition> create(@Valid @RequestBody Tuition tuition, @RequestParam Long studentId) {
-        return ResponseEntity.ok(tuitionService.create(tuition, studentId));
+    public ResponseEntity<Tuition> create(
+            @Valid @RequestBody TuitionRequest request,
+            @RequestParam(required = false) Long studentId) {
+        if (studentId != null) {
+            request.setStudentId(studentId);
+        }
+        return ResponseEntity.ok(tuitionService.create(request));
     }
 
     @PreAuthorize("hasRole('ADMIN')")

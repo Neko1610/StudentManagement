@@ -1,7 +1,13 @@
 import client from './client';
-import { Teacher, Clazz, Student, Attendance, Schedule } from '../types';
+import {
+  Teacher,
+  Clazz,
+  Attendance,
+  Schedule,
+  Assignment,
+  Submission
+} from '../types';
 
-// 🔥 convert snake_case → camelCase
 const mapSchedule = (s: any): Schedule => ({
   id: s.id,
   dayOfWeek: s.dayOfWeek,
@@ -18,20 +24,16 @@ export const teacherService = {
     return res.data;
   },
 
-  updateProfile: async (id: string, data: Partial<Teacher>): Promise<Teacher> => {
+  updateProfile: async (id: number, data: Partial<Teacher>): Promise<Teacher> => {
     const res = await client.put(`/teachers/${id}`, data);
     return res.data;
   },
 
   // CLASSES
   getClasses: async (email: string): Promise<Clazz[]> => {
-    console.log("CALL getClasses EMAIL:", email);
-
     const res = await client.get(`/teachers/classes`, {
       params: { email }
     });
-
-    console.log("CLASSES RES:", res.data);
     return res.data || [];
   },
 
@@ -50,13 +52,11 @@ export const teacherService = {
     return res.data;
   },
 
-  // 🔥 SCHEDULE FIX CHUẨN
   getSchedule: async (email: string): Promise<Schedule[]> => {
     const res = await client.get(`/schedules/teacher/email/${email}`);
     return (res.data || []).map(mapSchedule);
   },
 
-  // 🔥 FIX TODAY (lọc frontend)
   getTodaySchedule: async (email: string): Promise<Schedule[]> => {
     const res = await client.get(`/schedules/teacher/email/${email}`);
 
@@ -69,64 +69,94 @@ export const teacherService = {
       .filter((s: Schedule) => s.dayOfWeek === today);
   },
 
-  getScoresByStudent: (studentId: number) =>
-  client.get(`/scores/student/${studentId}`).then(res => res.data),
 
-  getScoresByClass: async (classId: number) => {
-    const res = await client.get(`/scores/class/${classId}`);
+  getScoresByClass: async (classId: number, email: string) => {
+    const res = await client.get(`/scores/class/${classId}`, {
+      params: { email } // 🔥 QUAN TRỌNG
+    });
     return res.data;
   },
+
   getSubjects: async () => {
     const res = await client.get('/subjects');
     return res.data;
   },
+
   createScore: async (data: any) => {
     const res = await client.post(`/scores`, data);
     return res.data;
   },
-  updateScore: async (id: number, data: any) => {
-    const res = await client.put(`/scores/${id}`, data);
+
+  updateScore: async (id: number, data: any, semester: number) => {
+    const res = await client.put(`/scores/${id}?semester=${semester}`, data);
     return res.data;
   },
+
   deleteScore: async (id: number) => {
     const res = await client.delete(`/scores/${id}`);
     return res.data;
   },
-  exportScoreExcel: async (classId: number) => {
-    const res = await client.get(`/scores/export/class/${classId}`, {
-      responseType: 'blob'
-    });
-    return res.data;
-  },
-  getAssignmentsByClass: async (classId: number) => {
-    const res = await client.get(`/assignments/class/${classId}`);
+
+  exportScoreExcel: async (classId: number, semester: number) => {
+    const res = await client.get(
+      `/scores/export/class/${classId}?semester=${semester}`,
+      { responseType: 'blob' }
+    );
     return res.data;
   },
 
-  updateSubmission: async (id: number, data: any) => {
-    const res = await client.put(`/submissions/${id}`, data);
+  exportScorePDF: async (classId: number, semester: number) => {
+    const res = await client.get(
+      `/scores/export/class/${classId}/pdf?semester=${semester}`,
+      { responseType: 'blob' }
+    );
     return res.data;
   },
-  getSubmissionsByAssignment: async (assignmentId: number) => {
+
+  getAssignmentsByClass: async (classId: number, email: string) => {
+    const res = await client.get(`/assignments/class/${classId}`, {
+      params: { email }
+    });
+    return res.data;
+  },
+
+  updateSubmission: async (
+    id: number,
+    data: Pick<Submission, 'score' | 'comment'>
+  ): Promise<Submission> => {
+
+    const res = await client.put(
+      `/submissions/${id}`, // ✅ bỏ semester
+      data
+    );
+
+    return res.data;
+  },
+
+  getSubmissionsByAssignment: async (assignmentId: number): Promise<Submission[]> => {
     const res = await client.get(`/submissions/assignment/${assignmentId}`);
     return res.data;
   },
+
   submitAssignment: async (formData: FormData) => {
     const res = await client.post(`/submissions/submit`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return res.data;
   },
-  createAssignment: async (formData: FormData) => {
+
+  createAssignment: async (formData: FormData): Promise<Assignment> => {
     const res = await client.post('/assignments', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return res.data;
   },
-  updateAssignment: async (id: number, data: any) => {
+
+  updateAssignment: async (id: number, data: Partial<Assignment>): Promise<Assignment> => {
     const res = await client.put(`/assignments/${id}`, data);
     return res.data;
   },
+
   deleteAssignment: async (id: number) => {
     await client.delete(`/assignments/${id}`);
   },

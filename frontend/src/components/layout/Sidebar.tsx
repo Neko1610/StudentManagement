@@ -47,8 +47,8 @@ export default function AppSidebar() {
         <div className={styles.brandMark}>S</div>
         {!collapsed && (
           <div>
-            <div className={styles.brandName}>Scholastic</div>
-            <div className={styles.brandSub}>Student Management</div>
+            <div className={styles.brandName}>THPT Nguyễn Trãi</div>
+            <div className={styles.brandSub}>Management</div>
           </div>
         )}
       </div>

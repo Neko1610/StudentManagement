@@ -42,19 +42,23 @@ public class TeacherController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<Teacher> create(@Valid @RequestBody Teacher teacher) {
-        return ResponseEntity.ok(teacherService.create(teacher));
+    public ResponseEntity<Teacher> create(
+            @Valid @RequestBody Teacher teacher,
+            @RequestParam(required = false) Long classId) {
+        return ResponseEntity.ok(teacherService.create(teacher, classId));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @PutMapping("/{id}")
     public ResponseEntity<Teacher> update(
             @PathVariable Long id,
             @RequestBody Teacher teacher,
             @RequestParam(required = false) Long subjectId,
-            @RequestParam(required = false) Long classId) {
+            @RequestParam(required = false) Long classId,
+            @RequestParam(defaultValue = "false") boolean force) {
+
         return ResponseEntity.ok(
-                teacherService.update(id, teacher, subjectId, classId));
+                teacherService.update(id, teacher, subjectId, classId, force));
     }
 
     @PreAuthorize("hasRole('ADMIN')")

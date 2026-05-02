@@ -1,6 +1,8 @@
 package com.schoolmanagement.controller;
 
+import com.schoolmanagement.dto.AssignmentStatusDTO;
 import com.schoolmanagement.entity.Assignment;
+import com.schoolmanagement.entity.ScoreType;
 import com.schoolmanagement.service.AssignmentService;
 
 import org.springframework.core.io.UrlResource;
@@ -32,13 +34,31 @@ public class AssignmentController {
     }
 
     @GetMapping("/class/{classId}")
-    public ResponseEntity<List<Assignment>> getByClass(@PathVariable Long classId) {
-        return ResponseEntity.ok(assignmentService.getByClassId(classId));
+    public ResponseEntity<List<Assignment>> getByClass(
+            @PathVariable Long classId,
+            @RequestParam String email) {
+
+        return ResponseEntity.ok(
+                assignmentService.getByClassAndTeacher(classId, email));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Assignment> getById(@PathVariable Long id) {
         return ResponseEntity.ok(assignmentService.getById(id));
+    }
+
+    @GetMapping("/student/class/{classId}")
+    public ResponseEntity<List<Assignment>> getByClassForStudent(
+            @PathVariable Long classId,
+            @RequestParam Integer semester) {
+
+        return ResponseEntity.ok(
+                assignmentService.getByClassForStudent(classId, semester));
+    }
+
+    @GetMapping("/student/{studentId}")
+    public ResponseEntity<List<AssignmentStatusDTO>> getByStudent(@PathVariable Long studentId) {
+        return ResponseEntity.ok(assignmentService.getByStudent(studentId));
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
@@ -49,7 +69,9 @@ public class AssignmentController {
             @RequestParam(required = false) String description,
             @RequestParam String deadline,
             @RequestParam MultipartFile file,
-            @RequestParam String email) throws Exception {
+            @RequestParam String email,
+            @RequestParam(required = false) ScoreType type,
+            @RequestParam(defaultValue = "1") Integer semester) throws Exception {
 
         return ResponseEntity.ok(
                 assignmentService.createWithFileByEmail(
@@ -58,7 +80,9 @@ public class AssignmentController {
                         title,
                         description,
                         deadline,
-                        file));
+                        file,
+                        type,
+                        semester));
     }
 
     @GetMapping("/download/{filename}")

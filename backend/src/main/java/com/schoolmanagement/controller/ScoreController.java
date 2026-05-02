@@ -29,8 +29,11 @@ public class ScoreController {
     }
 
     @GetMapping("/class/{classId}")
-    public ResponseEntity<List<Score>> getByClass(@PathVariable Long classId) {
-        return ResponseEntity.ok(scoreService.getByClassId(classId));
+    public List<ScoreDTO> getByClass(
+            @PathVariable Long classId,
+            @RequestParam String email) {
+
+        return scoreService.getByClassAndTeacher(classId, email);
     }
 
     @GetMapping("/{id}")
@@ -49,9 +52,23 @@ public class ScoreController {
                 .body(file);
     }
 
+    @GetMapping("/export/student/{studentId}")
+    public ResponseEntity<byte[]> exportByStudentAlias(@PathVariable Long studentId) throws IOException {
+        return exportByStudent(studentId);
+    }
+
     @GetMapping("/student/{studentId}")
     public ResponseEntity<List<ScoreDTO>> getByStudent(@PathVariable Long studentId) {
         return ResponseEntity.ok(scoreService.getByStudentId(studentId));
+    }
+
+    @GetMapping("/teacher/student/{studentId}")
+    public ResponseEntity<List<ScoreDTO>> getByTeacher(
+            @PathVariable Long studentId,
+            @RequestParam String email) {
+
+        return ResponseEntity.ok(
+                scoreService.getByStudentAndTeacher(studentId, email));
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
@@ -62,8 +79,12 @@ public class ScoreController {
 
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
     @PutMapping("/{id}")
-    public ResponseEntity<Score> update(@PathVariable Long id, @Valid @RequestBody Score score) {
-        return ResponseEntity.ok(scoreService.update(id, score));
+    public ResponseEntity<Score> update(
+            @PathVariable Long id,
+            @Valid @RequestBody Score score,
+            @RequestParam Integer semester // 🔥 thêm
+    ) {
+        return ResponseEntity.ok(scoreService.update(id, score, semester));
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
@@ -84,14 +105,41 @@ public class ScoreController {
     }
 
     @GetMapping("/export/class/{classId}")
-    public ResponseEntity<byte[]> exportByClass(@PathVariable Long classId) throws IOException {
+    public ResponseEntity<byte[]> exportByClass(
+            @PathVariable Long classId,
+            @RequestParam Integer semester) throws IOException {
 
-        byte[] content = scoreService.exportByClass(classId);
+        byte[] content = scoreService.exportByClass(classId, semester);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=score_class_" + classId + ".xlsx")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=score_class_" + classId + "_hk" + semester + ".xlsx")
                 .contentType(MediaType.parseMediaType(
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(content);
+    }
+
+    @GetMapping("/export/class/{classId}/pdf")
+    public ResponseEntity<byte[]> exportPdf(
+            @PathVariable Long classId,
+            @RequestParam Integer semester) {
+        byte[] data = scoreService.exportPdf(classId, semester);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=score_class_" + classId + "_hk" + semester + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(data);
+    }
+
+    @GetMapping("/export/student/{studentId}/pdf")
+    public ResponseEntity<byte[]> exportPdfByStudent(@PathVariable Long studentId) {
+        byte[] data = scoreService.exportPdfByStudent(studentId);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=score_student_" + studentId + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(data);
     }
 }

@@ -3,7 +3,6 @@ import {
   Badge,
   Drawer,
   Dropdown,
-  Input,
   Layout,
   Space,
   Typography,
@@ -12,14 +11,13 @@ import type { MenuProps } from 'antd';
 import {
   BellOutlined,
   LogoutOutlined,
-  SearchOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../../utils/auth';
 import { useEffect, useState } from 'react';
 import { commonService } from '../../api/commonService';
 import { Notification } from '../../types';
+import { useUserProfile } from '../../hooks/useUserProfile'; 
 import styles from './Header.module.css';
 
 const { Header } = Layout;
@@ -27,7 +25,9 @@ const { Text } = Typography;
 
 export default function AppHeader() {
   const navigate = useNavigate();
-  const user = auth.getUser();
+
+  const { user, name, sub } = useUserProfile(); 
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -47,7 +47,7 @@ export default function AppHeader() {
   };
 
   const handleLogout = () => {
-    auth.logout();
+    localStorage.clear();
     navigate('/login');
   };
 
@@ -56,7 +56,7 @@ export default function AppHeader() {
       {
         key: 'profile',
         icon: <UserOutlined />,
-        label: user?.fullName || 'Account',
+        label: name,
         disabled: true,
       },
       {
@@ -76,16 +76,9 @@ export default function AppHeader() {
       <Header className={styles.header}>
         <div className={styles.container}>
           <div className={styles.titleBlock}>
-            <Text className={styles.eyebrow}>Student Management System</Text>
+            <Text className={styles.eyebrow}>Trường THPT Nguyễn Trãi</Text>
             <div className={styles.logo}>Dashboard</div>
           </div>
-
-          <Input
-            className={styles.search}
-            prefix={<SearchOutlined />}
-            placeholder="Search students, classes, tuition..."
-            allowClear
-          />
 
           <div className={styles.right}>
             <Badge count={unreadCount} size="small">
@@ -93,7 +86,6 @@ export default function AppHeader() {
                 type="button"
                 className={styles.iconButton}
                 onClick={() => setDrawerVisible(true)}
-                aria-label="Open notifications"
               >
                 <BellOutlined />
               </button>
@@ -106,9 +98,10 @@ export default function AppHeader() {
                   icon={!user?.avatar && <UserOutlined />}
                   className={styles.avatar}
                 />
+
                 <span className={styles.userText}>
-                  <span>{user?.fullName || 'User'}</span>
-                  <small>{user?.role || 'Account'}</small>
+                  <span>{name}</span>
+                  <small>{sub}</small>
                 </span>
               </button>
             </Dropdown>

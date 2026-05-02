@@ -1,6 +1,6 @@
 import {
   Card, Table, Button, Upload,
-  message, Space
+  message, Space, Select
 } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
@@ -14,7 +14,7 @@ export default function StudentAssignments() {
   const [student, setStudent] = useState<any>(null);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [fileMap, setFileMap] = useState<{ [key: number]: File }>({});
-
+  const [semester, setSemester] = useState(1);
   // 🔥 load student
   useEffect(() => {
     if (user?.id) {
@@ -32,13 +32,17 @@ export default function StudentAssignments() {
     if (student?.classId) {
       loadAssignments();
     }
-  }, [student?.classId]);
+  }, [student?.classId, semester]);
 
   const loadAssignments = async () => {
-    const res = await client.get(`/assignments/class/${student.classId}`);
+    const res = await client.get(
+      `/assignments/student/class/${student.classId}`,
+      {
+        params: { semester }
+      }
+    );
     setAssignments(res.data);
   };
-
   const handleUpload = async (file: File, assignmentId: number) => {
     if (!student?.id) {
       message.error("Student not found");
@@ -101,7 +105,24 @@ export default function StudentAssignments() {
 
   return (
     <Card title="My Assignments">
-      <Table dataSource={assignments} columns={columns} rowKey="id" />
+
+      {/* 🔥 THÊM Ở ĐÂY */}
+      <div style={{ marginBottom: 16 }}>
+        <Select
+          value={semester}
+          onChange={setSemester}
+          style={{ width: 120 }}
+        >
+          <Select.Option value={1}>HK1</Select.Option>
+          <Select.Option value={2}>HK2</Select.Option>
+        </Select>
+      </div>
+
+      <Table
+        dataSource={assignments}
+        columns={columns}
+        rowKey="id"
+      />
     </Card>
   );
 }

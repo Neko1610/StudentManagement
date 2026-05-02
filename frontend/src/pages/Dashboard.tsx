@@ -131,7 +131,7 @@ const Dashboard = () => {
           </div>
           
           <Text style={{ fontSize: '11px', color: '#777587', fontWeight: 700, letterSpacing: '0.1em', opacity: 0.6 }}>
-             © 2024 SCHOLASTIC SANCTUARY • V2.4.1
+             © 2026 THPT Nguyễn Trãi • V2.4.1
           </Text>
         </div>
       </div>

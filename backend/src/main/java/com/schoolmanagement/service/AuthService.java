@@ -2,6 +2,9 @@ package com.schoolmanagement.service;
 
 import com.schoolmanagement.dto.AuthResponse;
 import com.schoolmanagement.entity.User;
+import com.schoolmanagement.repository.ParentRepository;
+import com.schoolmanagement.repository.StudentRepository;
+import com.schoolmanagement.repository.TeacherRepository;
 import com.schoolmanagement.repository.UserRepository;
 import com.schoolmanagement.security.JwtUtil;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,11 +19,23 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final TeacherRepository teacherRepository;
+    private final StudentRepository studentRepository;
+    private final ParentRepository parentRepository;
 
-    public AuthService(AuthenticationManager authenticationManager, JwtUtil jwtUtil, UserRepository userRepository) {
+    public AuthService(
+            AuthenticationManager authenticationManager,
+            JwtUtil jwtUtil,
+            UserRepository userRepository,
+            TeacherRepository teacherRepository,
+            StudentRepository studentRepository,
+            ParentRepository parentRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
+        this.teacherRepository = teacherRepository;
+        this.studentRepository = studentRepository;
+        this.parentRepository = parentRepository;
     }
 
     public AuthResponse login(String username, String password) {
@@ -29,9 +44,24 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(username, password));
             User user = userRepository.findByUsername(username).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
             String token = jwtUtil.generateToken(username, user.getRole().name());
-            return new AuthResponse(token, user.getRole().name());
+            return buildResponse(token, user);
         } catch (AuthenticationException e) {
             throw new BadCredentialsException("Invalid username or password");
         }
+    }
+
+    private AuthResponse buildResponse(String token, User user) {
+        return switch (user.getRole()) {
+            case TEACHER -> teacherRepository.findByEmail(user.getUsername())
+                    .map(teacher -> new AuthResponse(token, user.getRole().name(), teacher.getId(), teacher.getEmail(), teacher.getFullName()))
+                    .orElse(new AuthResponse(token, user.getRole().name(), user.getId(), user.getUsername(), user.getUsername()));
+            case STUDENT -> studentRepository.findByEmail(user.getUsername())
+                    .map(student -> new AuthResponse(token, user.getRole().name(), student.getId(), student.getEmail(), student.getFullName()))
+                    .orElse(new AuthResponse(token, user.getRole().name(), user.getId(), user.getUsername(), user.getUsername()));
+            case PARENT -> parentRepository.findByEmail(user.getUsername())
+                    .map(parent -> new AuthResponse(token, user.getRole().name(), parent.getId(), parent.getEmail(), parent.getFullName()))
+                    .orElse(new AuthResponse(token, user.getRole().name(), user.getId(), user.getUsername(), user.getUsername()));
+            case ADMIN -> new AuthResponse(token, user.getRole().name(), user.getId(), user.getUsername(), user.getUsername());
+        };
     }
 }

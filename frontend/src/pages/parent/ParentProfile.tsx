@@ -1,4 +1,4 @@
-import { Col, Form, Input, Row, message } from 'antd';
+import { Col, Form, Input, Row, Select, message } from 'antd';
 import { useEffect, useState } from 'react';
 import ProfileDashboardLayout from '../../components/ProfileDashboardLayout';
 import { parentService } from '../../api/parentService';
@@ -29,6 +29,7 @@ export default function ParentProfile() {
         phone: data.phone,
         email: data.email || user?.email,
         address: data.address,
+        gender: data.gender,
       });
     } catch (error) {
       message.error('Failed to load profile');
@@ -37,16 +38,17 @@ export default function ParentProfile() {
     }
   };
 
-  const handleSaveProfile = async (values: any) => {
-    try {
-      await parentService.updateProfile(user?.email || '', values);
-      message.success('Profile updated successfully');
-      setEditing(false);
-      loadProfile();
-    } catch (error) {
-      message.error('Failed to update profile');
-    }
-  };
+ const handleSaveProfile = async (values: any) => {
+  try {
+    await parentService.updateProfile(user?.email || '', values); // ✅ luôn dùng email
+
+    message.success('Profile updated successfully');
+    setEditing(false);
+    loadProfile();
+  } catch (error) {
+    message.error('Failed to update profile');
+  }
+};
 
   return (
     <ProfileDashboardLayout
@@ -87,6 +89,16 @@ export default function ParentProfile() {
         <Col xs={24} md={12}>
           <Form.Item label="Address" name="address">
             <Input disabled={!editing} style={inputStyle} />
+          </Form.Item>
+        </Col>
+
+        <Col xs={24} md={12}>
+          <Form.Item label="Gender" name="gender">
+            <Select disabled={!editing} style={{ minHeight: 42 }} placeholder="Select gender">
+              <Select.Option value="MALE">Male</Select.Option>
+              <Select.Option value="FEMALE">Female</Select.Option>
+              <Select.Option value="OTHER">Other</Select.Option>
+            </Select>
           </Form.Item>
         </Col>
       </Row>

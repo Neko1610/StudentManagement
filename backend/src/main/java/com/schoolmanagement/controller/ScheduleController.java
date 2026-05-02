@@ -55,6 +55,12 @@ public class ScheduleController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/generate")
+    public ResponseEntity<List<Schedule>> generate() {
+        return ResponseEntity.ok(scheduleService.autoGenerate());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Schedule> update(@PathVariable Long id,
             @Valid @RequestBody Schedule schedule,

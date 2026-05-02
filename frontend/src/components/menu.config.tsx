@@ -79,7 +79,7 @@ export const menuConfig = [
     key: 'notifications',
     label: 'Notifications',
     icon: <BellOutlined />,
-    roles: ['teacher', 'admin'],
+    roles: ['teacher', 'admin', 'student'],
   },
  
   // ===== PARENT =====
@@ -93,7 +93,7 @@ export const menuConfig = [
     key: 'tuition',
     label: 'Tuition',
     icon: <CreditCardOutlined />,
-    roles: ['parent'],
+    roles: ['parent', 'admin'],
   },
   {
     key: 'feedback',
@@ -111,7 +111,7 @@ export const menuConfig = [
     key: 'requests',
     label: 'Requests',
     icon: <FileOutlined />,
-    roles: ['parent'],
+    roles: ['parent', 'teacher'],
   },
 
   // ===== ADMIN =====

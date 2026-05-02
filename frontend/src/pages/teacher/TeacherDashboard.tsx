@@ -40,7 +40,7 @@ const PERIOD_TIME: any = {
 
 export default function TeacherDashboard() {
   const user = auth.getUser();
-
+  const [profile, setProfile] = useState<any>(null);
   const [classes, setClasses] = useState<Clazz[]>([]);
   const [todaySchedule, setTodaySchedule] = useState<Schedule[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -49,9 +49,18 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.email) loadDashboardData();
+    if (user?.email) {
+      loadDashboardData();
+      loadProfile(); // 🔥 thêm dòng này
+    }
   }, [user?.email]);
 
+  const loadProfile = async () => {
+    if (!user?.email) return;
+
+    const data = await teacherService.getProfile(user.email);
+    setProfile(data);
+  };
   const loadDashboardData = async () => {
     try {
       setLoading(true);
@@ -119,12 +128,11 @@ export default function TeacherDashboard() {
       <div className="page-stack">
         <div className="page-heading">
           <div>
-            <Title level={2} className="page-title">Good morning, {user?.fullName}</Title>
+            <Title level={2} className="page-title">Hello, {profile?.fullName}</Title>
             <div className="page-subtitle">
               Today's classes, attendance actions, and school updates are ready.
             </div>
           </div>
-          <Button type="primary" icon={<BookOutlined />}>Open gradebook</Button>
         </div>
 
         <Row gutter={[24, 24]}>

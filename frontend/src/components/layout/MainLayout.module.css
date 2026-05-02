@@ -22,10 +22,9 @@
 
 .container {
   width: 100%;
-  max-width: 1480px;
-  margin: 0 auto;
+  max-width: none; 
+  margin: 0;
   padding: 32px;
-  flex: 1;
 }
 
 @media (max-width: 768px) {

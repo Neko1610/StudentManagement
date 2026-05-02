@@ -8,7 +8,9 @@ import com.schoolmanagement.repository.ParentRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.util.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
-
+import com.schoolmanagement.entity.User;
+import com.schoolmanagement.entity.Role;
+import com.schoolmanagement.repository.UserRepository;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -18,13 +20,14 @@ public class StudentService {
     private final StudentRepository studentRepository;
     private final ClazzRepository clazzRepository;
     private final ParentRepository parentRepository;
+    private final UserRepository userRepository;
 
     public StudentService(StudentRepository studentRepository, ClazzRepository clazzRepository,
-            ParentRepository parentRepository) {
+            ParentRepository parentRepository, UserRepository userRepository) {
         this.studentRepository = studentRepository;
         this.clazzRepository = clazzRepository;
         this.parentRepository = parentRepository;
-
+        this.userRepository = userRepository;
     }
 
     public List<Student> getByClass(Long classId) {
@@ -78,6 +81,7 @@ public class StudentService {
         if (student.getStudentCode() == null || student.getStudentCode().isEmpty()) {
             student.setStudentCode(generateStudentCode());
         }
+
         if (student.getEmail() == null || student.getEmail().isEmpty()) {
             student.setEmail(generateEmail(student.getStudentCode()));
         }
@@ -88,11 +92,23 @@ public class StudentService {
                     .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
             student.setStudentClass(clazz);
         }
-
-        // 🔥 SAVE TRƯỚC (QUAN TRỌNG)
+        student.setActive(true);
+        // 🔥 SAVE STUDENT
         Student savedStudent = studentRepository.save(student);
 
-        // 🔥 GÁN PARENT SAU
+        // 🔥 TẠO USER
+        if (savedStudent.getEmail() != null &&
+                userRepository.findByUsername(savedStudent.getEmail()).isEmpty()) {
+
+            User user = new User();
+            user.setUsername(savedStudent.getEmail());
+            user.setPassword("123");
+            user.setRole(Role.STUDENT);
+
+            userRepository.save(user);
+        }
+
+        // 🔥 PARENT
         if (parentIds != null && !parentIds.isEmpty()) {
             Set<Parent> parents = new HashSet<>();
 
@@ -134,7 +150,9 @@ public class StudentService {
 
         if (updated.getPhone() != null)
             existing.setPhone(updated.getPhone());
-
+        if (updated.getActive() != null) {
+            existing.setActive(updated.getActive());
+        }
         // CLASS
         if (classId != null) {
             Clazz clazz = clazzRepository.findById(classId)
@@ -172,6 +190,15 @@ public class StudentService {
     }
 
     public void delete(Long id) {
-        studentRepository.deleteById(id);
+        Student student = getById(id);
+
+        // 🔥 XÓA USER TRƯỚC
+        if (student.getEmail() != null) {
+            userRepository.findByUsername(student.getEmail())
+                    .ifPresent(user -> userRepository.delete(user));
+        }
+
+        // 🔥 XÓA STUDENT
+        studentRepository.delete(student);
     }
 }

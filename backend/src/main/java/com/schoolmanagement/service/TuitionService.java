@@ -1,5 +1,6 @@
 package com.schoolmanagement.service;
 
+import com.schoolmanagement.dto.TuitionRequest;
 import com.schoolmanagement.entity.Clazz;
 import com.schoolmanagement.entity.Fund;
 import com.schoolmanagement.entity.Student;
@@ -39,7 +40,28 @@ public class TuitionService {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
         tuition.setStudent(student);
+        if (tuition.getStatus() == null || tuition.getStatus().isBlank()) {
+            tuition.setStatus("UNPAID");
+        }
         return tuitionRepository.save(tuition);
+    }
+
+    public Tuition create(TuitionRequest request) {
+        if (request.getStudentId() == null) {
+            throw new IllegalArgumentException("studentId is required");
+        }
+        if (request.getAmount() == null || request.getAmount() <= 0) {
+            throw new IllegalArgumentException("amount must be greater than 0");
+        }
+        if (request.getDueDate() == null) {
+            throw new IllegalArgumentException("dueDate is required");
+        }
+        Tuition tuition = new Tuition();
+        tuition.setAmount(request.getAmount());
+        tuition.setDescription(request.getDescription());
+        tuition.setDueDate(request.getDueDate());
+        tuition.setStatus("UNPAID");
+        return create(tuition, request.getStudentId());
     }
 
     public Tuition update(Long id, String status) {

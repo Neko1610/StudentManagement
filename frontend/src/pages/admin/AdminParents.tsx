@@ -49,15 +49,28 @@ export default function AdminParents() {
   const handleAdd = () => {
     setEditingParent(null);
     form.resetFields();
+    form.setFieldsValue({
+      emailPrefix: "",
+      email: ""
+    });
     setModalVisible(true);
   };
 
   const handleEdit = (parent: Parent) => {
     setEditingParent(parent);
+
+    const email = parent.email || "";
+
+    const prefix = email
+      .replace("ph", "")
+      .replace("nt@gmail.com", "");
+
     form.setFieldsValue({
       ...parent,
-      email: parent.email,
+      emailPrefix: prefix,
+      email: email
     });
+
     setModalVisible(true);
   };
 
@@ -69,6 +82,8 @@ export default function AdminParents() {
   const handleSave = async (values: any) => {
     try {
       setLoading(true);
+
+      values.email = form.getFieldValue("email");
 
       if (editingParent) {
         await adminService.updateParent(editingParent.id, values);
@@ -91,14 +106,23 @@ export default function AdminParents() {
     {
       title: 'NAME',
       dataIndex: 'fullName',
-      render: (text: string) => (
-        <Space>
-          <Avatar style={{ background: '#E2DFFF', color: '#3525CD' }}>
-            {text?.charAt(0)}
-          </Avatar>
-          <Text strong>{text}</Text>
-        </Space>
-      ),
+      render: (text: string) => {
+        const letter = text
+          ?.trim()
+          ?.split(' ')
+          ?.pop()
+          ?.charAt(0)
+          ?.toUpperCase();
+
+        return (
+          <Space>
+            <Avatar style={{ background: '#E2DFFF', color: '#3525CD' }}>
+              {letter || '?'}
+            </Avatar>
+            <Text strong>{text}</Text>
+          </Space>
+        );
+      },
     },
     {
       title: 'EMAIL',
@@ -200,27 +224,54 @@ export default function AdminParents() {
             </Form.Item>
 
             <Form.Item label="Email">
-              <Space>
-                <span>ph</span>
-                <Input
-                  placeholder="nhập tên"
-                  onChange={(e) => {
-                    const value = e.target.value;
+              <Space direction="vertical" style={{ width: "100%" }}>
 
-                    const email = `ph${value
-                      .normalize("NFD")
-                      .replace(/[\u0300-\u036f]/g, "")
-                      .replace(/đ/g, "d")
-                      .toLowerCase()
-                      .replace(/\s+/g, "")}nt@gmail.com`;
+                <Space.Compact>
+                  {/* prefix cố định */}
+                  <Input disabled value="ph" style={{ width: 60 }} />
 
-                    form.setFieldsValue({ email });
-                  }}
-                />
-                <span>nt@gmail.com</span>
+                  {/* input user nhập */}
+                  <Form.Item name="emailPrefix" noStyle>
+                    <Input
+                      placeholder="nhập tên"
+                      onChange={(e) => {
+                        const value = e.target.value;
+
+                        const prefix = value
+                          .normalize("NFD")
+                          .replace(/[\u0300-\u036f]/g, "")
+                          .replace(/đ/g, "d")
+                          .toLowerCase()
+                          .replace(/\s+/g, "")
+                          .replace(/[^a-z0-9]/g, "");
+
+                        const email = `ph${prefix}nt@gmail.com`;
+
+                        form.setFieldsValue({
+                          emailPrefix: prefix,
+                          email: email
+                        });
+                      }}
+                    />
+                  </Form.Item>
+
+                  {/* suffix cố định */}
+                  <Input disabled value="nt@gmail.com" style={{ width: 140 }} />
+                </Space.Compact>
+
+                {/* preview email */}
+                <Form.Item shouldUpdate noStyle>
+                  {() => (
+                    <div style={{ fontSize: 12, color: "#888" }}>
+                      {form.getFieldValue("email") || ""}
+                    </div>
+                  )}
+                </Form.Item>
+
               </Space>
             </Form.Item>
 
+            {/* email thật (hidden gửi backend) */}
             <Form.Item name="email" hidden>
               <Input />
             </Form.Item>

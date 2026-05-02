@@ -33,6 +33,16 @@ public class Clazz {
     @ManyToMany
     @JoinTable(name = "teacher_class", joinColumns = @JoinColumn(name = "class_id"), inverseJoinColumns = @JoinColumn(name = "teacher_id"))
     private Set<Teacher> teachers = new HashSet<>();
+    @Transient
+    private boolean homeroom;
+
+    public boolean isHomeroom() {
+        return homeroom;
+    }
+
+    public void setHomeroom(boolean homeroom) {
+        this.homeroom = homeroom;
+    }
 
     public Clazz() {
     }

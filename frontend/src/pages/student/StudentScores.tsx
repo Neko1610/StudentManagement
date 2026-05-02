@@ -1,123 +1,197 @@
-import { Card, Table, Spin, Button, message } from 'antd';
+import { Card, Table, Spin, Select, Button, message } from 'antd';
 import { useEffect, useState } from 'react';
 import { studentService } from '../../api/studentService';
 import { auth } from '../../utils/auth';
-import { Score } from '../../types';
 
 export default function StudentScores() {
-
   const user = auth.getUser();
 
   const [student, setStudent] = useState<any>(null);
-  const [scores, setScores] = useState<Score[]>([]);
+  const [scores, setScores] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  // 🔥 LOAD STUDENT
+  const [semester, setSemester] = useState(1);
+  const [exportType, setExportType] = useState<'excel' | 'pdf'>('excel');
+
+  // ================= LOAD PROFILE =================
   useEffect(() => {
     if (!user?.email) return;
 
-    const loadStudent = async () => {
-      try {
-        const res = await studentService.getProfile(user.email);
-        setStudent(res);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    loadStudent();
+    studentService
+      .getProfile(user.email)
+      .then(setStudent)
+      .catch(() => { });
   }, [user?.email]);
 
-  // 🔥 LOAD SCORES
+  // ================= LOAD SCORES =================
   useEffect(() => {
     if (!student?.id) return;
 
-    loadScores(student.id);
+    setLoading(true);
+    studentService
+      .getScores(student.id)
+      .then((res) => setScores(res || []))
+      .finally(() => setLoading(false));
   }, [student]);
 
-  const loadScores = async (studentId: number) => {
-    try {
-      setLoading(true);
+  // ================= GPA =================
+  const calcGPA = (o?: number, t?: number, m?: number, f?: number) => {
+    if (o == null && t == null && m == null && f == null) return null;
+    return ((o ?? 0) + (t ?? 0) + (m ?? 0) * 2 + (f ?? 0) * 3) / 7;
+  };
 
-      const res = await studentService.getScores(studentId);
-      setScores(res || []);
+  // ================= MAP =================
+  const grouped: Record<string, any> = {};
+
+  scores.forEach((s) => {
+    if (!grouped[s.subjectName]) {
+      grouped[s.subjectName] = {
+        subjectName: s.subjectName
+      };
+    }
+
+    Object.assign(grouped[s.subjectName], s);
+  });
+
+  const data = Object.values(grouped).map((s: any) => {
+    const oral = semester === 1 ? s.oral1 : s.oral2;
+    const test15 = semester === 1 ? s.test15_1 : s.test15_2;
+    const mid = semester === 1 ? s.mid1 : s.mid2;
+    const final = semester === 1 ? s.final1 : s.final2;
+
+    return {
+      ...s,
+      oral,
+      test15,
+      mid,
+      final,
+      gpa: calcGPA(oral, test15, mid, final)
+    };
+  });
+  // ================= GPA HK =================
+  const overallGPA = () => {
+    const list = data
+      .map((s) => s.gpa)
+      .filter((v): v is number => v != null);
+
+    if (!list.length) return null;
+
+    return list.reduce((a, b) => a + b, 0) / list.length;
+  };
+
+  const gpa = overallGPA();
+
+  // ================= COLOR =================
+  const getColor = (v: number) => {
+    if (v < 5) return '#ff4d4f';
+    if (v < 7) return '#faad14';
+    return '#52c41a';
+  };
+
+  // ================= EXPORT =================
+  const handleExport = async () => {
+    if (!student?.id) return;
+
+    try {
+      let blob;
+      let fileName;
+
+      if (exportType === 'excel') {
+        blob = await studentService.exportScores(student.id);
+        fileName = `BangDiem_HS_${student.id}.xlsx`;
+      } else {
+        //  blob = await studentService.exportScoresPDF?.(student.id); // nếu bạn có API PDF
+        fileName = `BangDiem_HS_${student.id}.pdf`;
+      }
+
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
 
     } catch (err) {
       console.error(err);
-      message.error('Load scores failed');
-    } finally {
-      setLoading(false);
+      message.error('Lỗi export');
     }
   };
 
-  // 🔥 EXPORT
-const handleExport = async () => {
-  if (!student?.id) {
-    message.error('Student not found');
-    return;
-  }
-
-  try {
-    const blob = await studentService.exportScores(student.id);
-
-    // 🔥 tạo file
-    const url = window.URL.createObjectURL(
-      new Blob([blob], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      })
-    );
-
-    const link = document.createElement('a');
-    link.href = url;
-
-    // 🔥 đặt tên file đẹp hơn
-    link.download = `scores_${student.id}.xlsx`;
-
-    document.body.appendChild(link);
-    link.click();
-
-    // cleanup
-    link.remove();
-    window.URL.revokeObjectURL(url);
-
-    message.success('Export success');
-
-  } catch (err) {
-    console.error(err);
-    message.error('Export failed');
-  }
-};
+  // ================= COLUMNS =================
   const columns = [
-    { title: 'Subject', dataIndex: 'subjectName' },
-    { title: 'Assignment', dataIndex: 'assignmentScore' },
-    { title: 'Midterm', dataIndex: 'midtermScore' },
-    { title: 'Final', dataIndex: 'finalScore' },
+    { title: 'Môn', dataIndex: 'subjectName' },
     {
-      title: 'Average',
-      dataIndex: 'averageScore',
-      render: (value: number) => {
-        if (value == null) return '-';
-
-        let color = 'green';
-        if (value < 5) color = 'red';
-        else if (value < 7) color = 'orange';
-
-        return <b style={{ color }}>{value.toFixed(2)}</b>;
-      }
+      title: 'Miệng',
+      dataIndex: 'oral',
+      render: (v: number) => v ?? '-'
+    },
+    {
+      title: '15p',
+      dataIndex: 'test15',
+      render: (v: number) => v ?? '-'
+    },
+    {
+      title: 'Giữa kỳ',
+      dataIndex: 'mid',
+      render: (v: number) => v ?? '-'
+    },
+    {
+      title: 'Cuối kỳ',
+      dataIndex: 'final',
+      render: (v: number) => v ?? '-'
+    },
+    {
+      title: 'GPA',
+      dataIndex: 'gpa',
+      render: (v: number) =>
+        v != null ? (
+          <b style={{ color: getColor(v) }}>{v.toFixed(2)}</b>
+        ) : '-'
     }
   ];
 
+  // ================= UI =================
   return (
     <Spin spinning={loading}>
       <Card
-        title="📊 My Scores"
-        extra={<Button onClick={handleExport}>Export Excel</Button>}
+        title={`📊 GPA HK${semester}: ${gpa != null ? gpa.toFixed(2) : '--'
+          }`}
+        extra={
+          <>
+            <Select
+              value={semester}
+              onChange={setSemester}
+              options={[
+                { value: 1, label: 'HK1' },
+                { value: 2, label: 'HK2' }
+              ]}
+              style={{ width: 100 }}
+            />
+
+            <Select
+              value={exportType}
+              onChange={setExportType}
+              style={{ width: 100, marginLeft: 10 }}
+            >
+              <Select.Option value="excel">Excel</Select.Option>
+              <Select.Option value="pdf">PDF</Select.Option>
+            </Select>
+
+            <Button
+              style={{ marginLeft: 10 }}
+              onClick={handleExport}
+            >
+              Export
+            </Button>
+          </>
+        }
       >
         <Table
           columns={columns}
-          dataSource={scores}
+          dataSource={data}
           rowKey="id"
           pagination={false}
+          locale={{ emptyText: 'Chưa có điểm' }}
         />
       </Card>
     </Spin>

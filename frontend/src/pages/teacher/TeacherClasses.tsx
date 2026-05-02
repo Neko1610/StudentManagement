@@ -1,6 +1,6 @@
 import {
   Card, Table, Button, Space, Modal,
-  Form, Input, message, Spin
+  Form, Input, message, Spin, Tag
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { teacherService } from '../../api/teacherService';
@@ -20,22 +20,26 @@ export default function TeacherClasses() {
 
   // 🔥 LOAD CLASSES
   useEffect(() => {
-  if (user?.email) {
-    loadClasses();
-  }
-}, [user?.email]); // 🔥 chỉ theo dõi email
+    if (user?.email) {
+      loadClasses();
+    }
+  }, [user?.email]);
 
   const loadClasses = async () => {
     try {
       if (!user?.email) return;
 
       setLoading(true);
-      console.log("EMAIL:", user.email);
 
       const data = await teacherService.getClasses(user.email);
-      console.log("CLASSES:", data);
 
-      setClasses(data || []);
+      // 🔥 sort homeroom lên đầu
+      const sorted = (data || []).sort(
+        (a, b) => Number(b.homeroom) - Number(a.homeroom)
+      );
+
+      setClasses(sorted);
+
     } catch (error) {
       console.error(error);
       message.error('Failed to load classes');
@@ -107,6 +111,7 @@ export default function TeacherClasses() {
 
   return (
     <div>
+
       {/* 🔥 CLASS LIST */}
       <Card title="My Classes" className="mb-4">
         <Spin spinning={loading}>
@@ -122,10 +127,21 @@ export default function TeacherClasses() {
                   style={{
                     cursor: 'pointer',
                     backgroundColor:
-                      selectedClass === clazz.id ? '#e6f7ff' : 'transparent',
+                      clazz.homeroom
+                        ? '#f6ffed'
+                        : selectedClass === clazz.id
+                        ? '#e6f7ff'
+                        : 'transparent',
+                    border: clazz.homeroom ? '2px solid #52c41a' : undefined
                   }}
                 >
-                  <h3>{clazz.name}</h3>
+                  <h3>
+                    {clazz.name}{' '}
+                    {clazz.homeroom && (
+                      <Tag color="green">⭐ GVCN</Tag>
+                    )}
+                  </h3>
+
                   <p>Students: {clazz.studentCount}</p>
                 </Card>
               ))}

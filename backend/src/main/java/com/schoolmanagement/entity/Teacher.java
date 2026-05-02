@@ -24,7 +24,6 @@ public class Teacher {
     @ManyToMany(mappedBy = "teachers")
     @JsonIgnore
     private Set<Clazz> classes = new HashSet<>();
-    @Email
     private String email;
     @ManyToOne
     @JoinColumn(name = "subject_id")
@@ -47,6 +46,15 @@ public class Teacher {
 
     @Transient
     private Long homeroomClassId;
+    private String qualifications;
+
+    public String getQualifications() {
+        return qualifications;
+    }
+
+    public void setQualifications(String qualifications) {
+        this.qualifications = qualifications;
+    }
 
     public void setId(Long id) {
         this.id = id;

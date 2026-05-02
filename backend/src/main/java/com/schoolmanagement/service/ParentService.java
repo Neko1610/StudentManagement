@@ -2,7 +2,10 @@ package com.schoolmanagement.service;
 
 import com.schoolmanagement.entity.Parent;
 import com.schoolmanagement.entity.Student;
+import com.schoolmanagement.entity.User;
+import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.repository.ParentRepository;
+import com.schoolmanagement.repository.UserRepository;
 import com.schoolmanagement.util.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -11,10 +14,14 @@ import java.util.Set;
 
 @Service
 public class ParentService {
-    private final ParentRepository parentRepository;
 
-    public ParentService(ParentRepository parentRepository) {
+    private final ParentRepository parentRepository;
+    private final UserRepository userRepository;
+
+    public ParentService(ParentRepository parentRepository,
+            UserRepository userRepository) {
         this.parentRepository = parentRepository;
+        this.userRepository = userRepository;
     }
 
     public List<Parent> getAll() {
@@ -53,20 +60,6 @@ public class ParentService {
         return students;
     }
 
-    public Parent getById(Long id) {
-        return parentRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Parent not found"));
-    }
-
-    public Parent create(Parent parent) {
-
-        // 🔥 AUTO EMAIL
-        if (parent.getEmail() == null || parent.getEmail().isEmpty()) {
-            parent.setEmail(generateEmail(parent.getFullName()));
-        }
-
-        return parentRepository.save(parent);
-    }
-
     public Parent updateByEmail(String email, Parent update) {
 
         Parent existing = parentRepository.findByEmail(email)
@@ -75,24 +68,89 @@ public class ParentService {
         existing.setFullName(update.getFullName());
         existing.setPhone(update.getPhone());
         existing.setJob(update.getJob());
+        existing.setAddress(update.getAddress());
+        existing.setGender(update.getGender());
 
         return parentRepository.save(existing);
     }
 
+    public Parent getById(Long id) {
+        return parentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Parent not found"));
+    }
+
+    // ================= CREATE =================
+    public Parent create(Parent parent) {
+
+        if (parent.getEmail() == null || parent.getEmail().isEmpty()) {
+            throw new RuntimeException("EMAIL_REQUIRED");
+        }
+
+        String email = parent.getEmail().trim().toLowerCase();
+
+        if (userRepository.findByUsername(email).isPresent()) {
+            throw new RuntimeException("EMAIL_EXISTS");
+        }
+
+        parent.setEmail(email);
+
+        Parent saved = parentRepository.save(parent);
+
+        // 🔥 CREATE USER
+        try {
+            User user = new User();
+            user.setUsername(email);
+            user.setPassword("123");
+            user.setRole(Role.PARENT);
+
+            userRepository.save(user);
+        } catch (Exception ignored) {
+        }
+
+        return saved;
+    }
+
+    // ================= UPDATE =================
     public Parent update(Long id, Parent update) {
         Parent existing = getById(id);
+
         existing.setFullName(update.getFullName());
-        existing.setPhone(update.getPhone());
-        if (update.getEmail() == null || update.getEmail().isEmpty()) {
-            existing.setEmail(generateEmail(existing.getFullName()));
-        } else {
-            existing.setEmail(update.getEmail());
-        }
         existing.setJob(update.getJob());
+        existing.setPhone(update.getPhone());
+        existing.setAddress(update.getAddress());
+        existing.setGender(update.getGender());
+
+        if (update.getEmail() != null && !update.getEmail().isEmpty()) {
+
+            String newEmail = update.getEmail().trim().toLowerCase();
+
+            if (userRepository.findByUsername(newEmail).isPresent()
+                    && !newEmail.equals(existing.getEmail())) {
+                throw new RuntimeException("EMAIL_EXISTS");
+            }
+
+            // 🔥 update username
+            userRepository.findByUsername(existing.getEmail())
+                    .ifPresent(user -> {
+                        user.setUsername(newEmail);
+                        userRepository.save(user);
+                    });
+
+            existing.setEmail(newEmail);
+        }
+
         return parentRepository.save(existing);
     }
 
+    // ================= DELETE =================
     public void delete(Long id) {
+        Parent parent = getById(id);
+
+        if (parent.getEmail() != null) {
+            userRepository.findByUsername(parent.getEmail())
+                    .ifPresent(userRepository::delete);
+        }
+
         parentRepository.deleteById(id);
     }
 }

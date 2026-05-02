@@ -5,7 +5,7 @@ import { studentService } from '../../api/studentService';
 import { commonService } from '../../api/commonService';
 import { auth } from '../../utils/auth';
 import dayjs from 'dayjs';
-
+import client from '../../api/client';
 const { Title, Text } = Typography;
 
 export default function StudentDashboard() {
@@ -16,14 +16,15 @@ export default function StudentDashboard() {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [semester, setSemester] = useState(1);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.email) return;
 
     const fetchStudent = async () => {
       try {
         setLoading(true);
-        const res = await studentService.getProfile(user.id);
+        const res = await studentService.getProfile(user.email);
         setStudent(res);
       } catch (err) {
         console.error('Load student error:', err);
@@ -33,7 +34,7 @@ export default function StudentDashboard() {
     };
 
     fetchStudent();
-  }, [user?.id]);
+  }, [user?.email]);
 
   useEffect(() => {
     if (!student?.classId) return;
@@ -43,21 +44,27 @@ export default function StudentDashboard() {
         setLoading(true);
 
         const [aRes, nRes, sRes] = await Promise.all([
-          studentService.getAssignmentsByClass(student.classId),
+          client
+            .get(`/assignments/student/class/${student.classId}`, {
+              params: { semester }
+            })
+            .then(res => res.data),
+
           commonService.getNotifications(),
+
           studentService.getSubmissions(student.id),
         ]);
 
         setAssignments(aRes || []);
         setNotifications((nRes || []).slice(0, 5));
         setSubmissions(sRes || []);
+
       } catch (err) {
         console.error('Load dashboard error:', err);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [student]);
 

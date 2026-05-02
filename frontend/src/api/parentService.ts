@@ -1,5 +1,6 @@
 import client from './client';
 import { Parent, Student, Tuition, Fund, Teacher, Request } from '../types';
+import { requestService } from './requestService';
 
 export const parentService = {
   getProfile: (email: string) =>
@@ -7,6 +8,9 @@ export const parentService = {
 
   updateProfile: (email: string, data: any) =>
     client.put(`/parents/email/${email}`, data).then(res => res.data),
+
+  updateProfileById: (id: string, data: any) =>
+    client.put(`/parents/${id}`, data).then(res => res.data),
 
 
   getStudents: (email: string) =>
@@ -22,15 +26,24 @@ export const parentService = {
   },
 
   submitRequest: (data: any): Promise<Request> => {
-    return client.post('/requests', data).then((res) => res.data);
+    return requestService.submit(data as any) as any;
   },
   getScoresByStudent: (studentId: number) =>
     client.get(`/scores/student/${studentId}`).then(res => res.data),
   getAttendanceByStudent: (studentId: number) =>
     client.get(`/attendance/student/${studentId}`).then(res => res.data),
 
+  getAssignmentsByStudent: (studentId: number) =>
+    client.get(`/assignments/student/${studentId}`).then(res => res.data),
+
   getAssignmentsByClass: (classId: number) =>
     client.get(`/assignments/class/${classId}`).then(res => res.data),
+
+  exportScoresExcelUrl: (studentId: number) =>
+    `${client.defaults.baseURL}/scores/export/student/${studentId}`,
+
+  exportScoresPdfUrl: (studentId: number) =>
+    `${client.defaults.baseURL}/scores/export/student/${studentId}/pdf`,
 
 
   getTuition: (studentId: string) =>

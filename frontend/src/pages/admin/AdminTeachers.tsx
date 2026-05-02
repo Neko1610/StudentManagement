@@ -1,305 +1,331 @@
 import {
-  Card,
-  Table,
+  Avatar,
   Button,
+  Card,
+  Input,
   Modal,
   Form,
-  Input,
-  message,
-  Spin,
-  Space,
-  Popconfirm,
   Select,
+  Space,
+  Table,
   Typography,
-  Avatar,
-  Tag,
-} from 'antd';
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-} from '@ant-design/icons';
-import { useEffect, useState } from 'react';
-import { adminService } from '../../api/adminService';
-import { Teacher } from '../../types';
+  message
+} from "antd";
+import { useEffect, useState } from "react";
+import { PlusOutlined } from "@ant-design/icons";
+import { adminService } from "../../api/adminService";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function AdminTeachers() {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
-  const [emailName, setEmailName] = useState('');
+  const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+
+  const [search, setSearch] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState<number | null>(null);
+  const [classFilter, setClassFilter] = useState<number | null>(null);
 
   const [form] = Form.useForm();
 
-  useEffect(() => {
-    loadTeachers();
-    loadExtraData();
-  }, []);
-
-  const loadTeachers = async () => {
-    try {
-      setLoading(true);
-      const data = await adminService.getTeachers();
-      setTeachers(data);
-    } catch {
-      message.error('Failed to load teachers');
-    } finally {
-      setLoading(false);
-    }
+  // ================= LOAD =================
+  const fetchTeachers = async () => {
+    setLoading(true);
+    const res = await adminService.getTeachers();
+    setTeachers(res || []);
+    setLoading(false);
   };
 
-  const generateEmail = (name: string) => {
-    if (!name) return '';
-    return (
-      'gv' +
-      name
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/đ/g, 'd')
-        .toLowerCase()
-        .replace(/\s+/g, '') +
-      'tn@gmail.com'
+  const fetchClasses = async () => {
+    const res = await adminService.getClasses();
+    setClasses(res || []);
+  };
+
+  const fetchSubjects = async () => {
+    const res = await adminService.getSubjects();
+    setSubjects(res || []);
+  };
+
+  useEffect(() => {
+    fetchTeachers();
+    fetchClasses();
+    fetchSubjects();
+  }, []);
+
+  // ================= HIGHLIGHT =================
+  const highlight = (text: string) => {
+    if (!search) return text;
+
+    const parts = text.split(new RegExp(`(${search})`, "gi"));
+
+    return parts.map((part, i) =>
+      part.toLowerCase() === search.toLowerCase() ? (
+        <span key={i} style={{ background: "yellow" }}>
+          {part}
+        </span>
+      ) : (
+        part
+      )
     );
   };
 
-  const loadExtraData = async () => {
+  // ================= CRUD =================
+  const handleSubmit = async () => {
+    const values = await form.validateFields();
+    const teacherId = editing?.id;
+
+    values.email = values.emailPrefix;
+
     try {
-      const [subjectData, classData] = await Promise.all([
-        adminService.getSubjects(),
-        adminService.getClasses(),
-      ]);
-      setSubjects(subjectData);
-      setClasses(classData);
-    } catch {
-      message.error('Failed to load data');
-    }
-  };
-
-  const handleAdd = () => {
-    setEditingTeacher(null);
-    form.resetFields();
-    setModalVisible(true);
-  };
-
-  const handleEdit = (teacher: Teacher) => {
-    setEditingTeacher(teacher);
-    form.setFieldsValue({
-      ...teacher,
-      subjectId: teacher.subjectId,
-      classId: teacher.homeroomClassId || undefined,
-    });
-    setModalVisible(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    await adminService.deleteTeacher(id);
-    loadTeachers();
-  };
-
-  const handleSave = async (values: any) => {
-    try {
-      setLoading(true);
-
-      if (editingTeacher) {
+      if (teacherId) {
         await adminService.updateTeacher(
-          editingTeacher.id,
+          Number(teacherId),
           values,
           Number(values.subjectId),
           Number(values.classId)
         );
-        message.success('Updated');
+        message.success("Cập nhật thành công");
       } else {
-        await adminService.createTeacher(values);
-        message.success('Created');
+        await adminService.createTeacher(
+          values,
+          Number(values.subjectId),
+          Number(values.classId)
+        );
+        message.success("Thêm thành công");
       }
 
-      setModalVisible(false);
-      loadTeachers();
-    } catch {
-      message.error('Error');
-    } finally {
-      setLoading(false);
+      setOpen(false);
+      setEditing(null);
+      form.resetFields();
+      fetchTeachers();
+    } catch (err: any) {
+      const raw = err?.response?.data;
+
+      const msg =
+        typeof raw === "string"
+          ? raw
+          : raw?.message || raw?.error || "";
+
+      if (msg.includes("CLASS_HAS_HOMEROOM")) {
+        Modal.confirm({
+          title: "Lớp đã có GVCN",
+          content: "Bạn có muốn thay không?",
+          onOk: async () => {
+            await adminService.updateTeacher(
+              Number(teacherId),
+              values,
+              Number(values.subjectId),
+              Number(values.classId),
+              true
+            );
+            fetchTeachers();
+          }
+        });
+      } else if (msg.includes("EMAIL_EXISTS")) {
+        message.error("Email đã tồn tại");
+      } else {
+        message.error("Lỗi thao tác");
+      }
     }
   };
 
+  const handleDelete = async (id: number) => {
+    await adminService.deleteTeacher(String(id));
+    message.success("Đã xóa");
+    fetchTeachers();
+  };
+
+  const handleEdit = (t: any) => {
+    const prefix = t.email
+      ?.replace("gv", "")
+      .replace("nt@gmail.com", "");
+
+    setEditing(t);
+    setOpen(true);
+
+    form.setFieldsValue({
+      ...t,
+      emailPrefix: prefix
+    });
+  };
+
+  // ================= FILTER =================
+  const filteredData = teachers.filter((t) => {
+    const keyword = search.toLowerCase();
+
+    const matchSearch =
+      t.fullName?.toLowerCase().includes(keyword) ||
+      t.email?.toLowerCase().includes(keyword) ||
+      t.phone?.toLowerCase().includes(keyword);
+
+    const matchSubject = subjectFilter
+      ? t.subjectId === subjectFilter
+      : true;
+
+    const matchClass = classFilter
+      ? t.homeroomClassId === classFilter
+      : true;
+
+    return matchSearch && matchSubject && matchClass;
+  });
+
+  // ================= TABLE =================
   const columns = [
     {
-      title: 'NAME',
-      dataIndex: 'fullName',
-      render: (text: string) => (
+      title: "Giáo viên",
+      render: (_: any, r: any) => (
         <Space>
-          <Avatar style={{ background: '#E2DFFF', color: '#3525CD' }}>
-            {text?.charAt(0)}
-          </Avatar>
-          <Text strong>{text}</Text>
+          <Avatar>{r.fullName?.charAt(0)}</Avatar>
+          <div>
+            <div>{highlight(r.fullName || "")}</div>
+            <small>{highlight(r.email || "")}</small>
+          </div>
         </Space>
-      ),
+      )
     },
     {
-      title: 'EMAIL',
-      dataIndex: 'email',
-      render: (text: string) => <Text type="secondary">{text}</Text>,
+      title: "Môn",
+      dataIndex: "subjectName"
     },
     {
-      title: 'PHONE',
-      dataIndex: 'phone',
-      render: (t: string) => t || '—',
+      title: "Chủ nhiệm",
+      dataIndex: "homeroomClassName"
     },
     {
-      title: 'SUBJECT',
-      dataIndex: 'subjectName',
-      render: (t: string) => (
-        <Tag color="blue" style={{ borderRadius: 20 }}>
-          {t || 'N/A'}
-        </Tag>
-      ),
+      title: "SĐT",
+      dataIndex: "phone"
     },
     {
-      title: 'HOMEROOM',
-      dataIndex: 'homeroomClassName',
-      render: (t: string) => t || '—',
-    },
-    {
-      title: 'ACTIONS',
-      align: 'right' as const,
-      render: (_: any, record: Teacher) => (
+      title: "Hành động",
+      render: (r: any) => (
         <Space>
-          <Button
-            icon={<EditOutlined style={{ color: '#3525CD' }} />}
-            type="text"
-            onClick={() => handleEdit(record)}
-          />
-          <Popconfirm
-            title="Delete teacher?"
-            onConfirm={() => handleDelete(record.id)}
-          >
-            <Button danger icon={<DeleteOutlined />} type="text" />
-          </Popconfirm>
+          <Button onClick={() => handleEdit(r)}>Sửa</Button>
+          <Button danger onClick={() => handleDelete(r.id)}>
+            Xóa
+          </Button>
         </Space>
-      ),
-    },
+      )
+    }
   ];
 
   return (
-    <div style={{ padding: 32, background: '#F8F9FA' }}>
-      <Spin spinning={loading}>
-        {/* HEADER */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <Title level={2} style={{ margin: 0, color: '#1E00A9' }}>
-              Teachers
-            </Title>
-            <Text type="secondary">
-              Manage academic staff records
-            </Text>
-          </div>
+    <Card>
+      <Title level={4}>Quản lý giáo viên</Title>
 
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAdd}
-            style={{
-              background: '#3525CD',
-              borderRadius: 10,
-              height: 40,
-              fontWeight: 'bold',
-            }}
-          >
-            Add Teacher
-          </Button>
-        </div>
+      {/* SEARCH + FILTER */}
+      <Space style={{ marginBottom: 16 }}>
+        <Input
+          placeholder="Tìm giáo viên..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 250 }}
+        />
 
-        {/* TABLE */}
-        <Card
-          style={{
-            borderRadius: 16,
-            borderLeft: '4px solid #3525CD',
+        <Select
+          placeholder="Môn"
+          allowClear
+          style={{ width: 160 }}
+          onChange={(v) => setSubjectFilter(v)}
+        >
+          {subjects.map((s) => (
+            <Select.Option key={s.id} value={s.id}>
+              {s.name}
+            </Select.Option>
+          ))}
+        </Select>
+
+        <Select
+          placeholder="Lớp CN"
+          allowClear
+          style={{ width: 160 }}
+          onChange={(v) => setClassFilter(v)}
+        >
+          {classes.map((c) => (
+            <Select.Option key={c.id} value={c.id}>
+              {c.name}
+            </Select.Option>
+          ))}
+        </Select>
+
+        <Button
+          onClick={() => {
+            setSearch("");
+            setSubjectFilter(null);
+            setClassFilter(null);
           }}
         >
-          <Table
-            dataSource={teachers}
-            columns={columns}
-            rowKey="id"
-            pagination={{ pageSize: 5 }}
-          />
-        </Card>
+          Reset
+        </Button>
 
-        {/* MODAL */}
-        <Modal
-          title={editingTeacher ? 'Edit Teacher' : 'Add Teacher'}
-          open={modalVisible}
-          onCancel={() => setModalVisible(false)}
-          onOk={() => form.submit()}
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => {
+            setEditing(null);
+            setOpen(true);
+            form.resetFields();
+          }}
         >
-          <Form form={form} layout="vertical" onFinish={handleSave}>
-            <Form.Item name="fullName" label="Full Name" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
+          Thêm
+        </Button>
+      </Space>
 
-            <Form.Item label="Email">
-              <Space>
-                <span>gv</span>
-                <Input
-                  value={emailName}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setEmailName(value);
-                    form.setFieldsValue({
-                      email: generateEmail(value),
-                    });
-                  }}
-                />
-                <span>tn@gmail.com</span>
-              </Space>
-            </Form.Item>
+      <Table rowKey="id" dataSource={filteredData} columns={columns} />
 
-            <Form.Item name="email" hidden>
-              <Input />
-            </Form.Item>
+      {/* MODAL */}
+      <Modal
+        open={open}
+        onCancel={() => setOpen(false)}
+        onOk={handleSubmit}
+        title={editing ? "Sửa giáo viên" : "Thêm giáo viên"}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item name="fullName" label="Tên" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
 
-            <Form.Item name="phone" label="Phone">
-              <Input />
-            </Form.Item>
+          {/* EMAIL PREFIX */}
+          <Form.Item label="Email">
+            <Space.Compact>
+              <Input disabled value="gv" style={{ width: 60 }} />
 
-            <Form.Item name="dateOfBirth" label="Date of Birth">
-              <Input type="date" />
-            </Form.Item>
+              <Form.Item name="emailPrefix" noStyle>
+                <Input style={{ width: 200 }} />
+              </Form.Item>
 
-            <Form.Item name="address" label="Address">
-              <Input />
-            </Form.Item>
+              <Input disabled value="nt@gmail.com" style={{ width: 150 }} />
+            </Space.Compact>
+          </Form.Item>
 
-            <Form.Item name="subjectId" label="Subject" rules={[{ required: true }]}>
-              <Select>
-                {subjects.map((s) => (
-                  <Select.Option key={s.id} value={s.id}>
-                    {s.name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
+          <Form.Item name="phone" label="SĐT">
+            <Input />
+          </Form.Item>
 
-            <Form.Item name="classId" label="Homeroom">
-              <Select allowClear>
-                {classes.map((c) => (
-                  <Select.Option key={c.id} value={c.id}>
-                    {c.name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
+          <Form.Item name="subjectId" label="Môn">
+            <Select>
+              {subjects.map((s) => (
+                <Select.Option key={s.id} value={s.id}>
+                  {s.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-            <Form.Item name="qualifications" label="Qualifications">
-              <Input.TextArea />
-            </Form.Item>
-          </Form>
-        </Modal>
-      </Spin>
-    </div>
+          <Form.Item name="classId" label="Chủ nhiệm">
+            <Select allowClear>
+              {classes.map((c) => (
+                <Select.Option key={c.id} value={c.id}>
+                  {c.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </Card>
   );
 }

@@ -9,6 +9,7 @@ import com.schoolmanagement.repository.SubmissionRepository;
 import com.schoolmanagement.util.ResourceNotFoundException;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -21,18 +22,21 @@ public class SubmissionService {
     private final SubmissionRepository submissionRepository;
     private final AssignmentRepository assignmentRepository;
     private final StudentRepository studentRepository;
-    private final FileService fileService; // 🔥 thêm
+    private final FileService fileService;
+    private final ScoreService scoreService;
 
     public SubmissionService(
             SubmissionRepository submissionRepository,
             AssignmentRepository assignmentRepository,
             StudentRepository studentRepository,
-            FileService fileService) {
+            FileService fileService,
+            ScoreService scoreService) {
 
         this.submissionRepository = submissionRepository;
         this.assignmentRepository = assignmentRepository;
         this.studentRepository = studentRepository;
         this.fileService = fileService;
+        this.scoreService = scoreService;
     }
 
     // ================= GET =================
@@ -74,14 +78,22 @@ public class SubmissionService {
     }
 
     // ================= CHẤM ĐIỂM =================
+    @Transactional
     public Submission grade(Long id, Submission updated) {
 
         Submission existing = getById(id);
+        Double previousScore = existing.getScore();
 
         existing.setScore(updated.getScore());
         existing.setComment(updated.getComment());
 
-        return submissionRepository.save(existing);
+        Submission saved = submissionRepository.save(existing);
+
+        Integer realSemester = saved.getAssignment().getSemester();
+
+        scoreService.updateFromSubmission(saved, realSemester, previousScore);
+
+        return saved;
     }
 
     // ================= DELETE =================

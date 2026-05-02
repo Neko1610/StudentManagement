@@ -26,13 +26,13 @@ export interface Student {
   email: string;
   phone?: string;
 
-  dob?: string; 
+  dob?: string;
   gender?: string;
 
   // class
   classId?: number;
   className?: string;
-
+  active: boolean;
   // relations
   parents?: Parent[];
 }
@@ -64,6 +64,7 @@ export interface Parent {
   email: string;
   phone?: string;
   address?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
   occupation?: string;
   relationship?: string;
   avatar?: string;
@@ -77,7 +78,8 @@ export interface Clazz {
   capacity?: number;
   currentStudents?: number;
   description?: string;
-  studentCount?: number; 
+  studentCount?: number;
+  homeroom?: boolean;
 }
 
 export interface Subject {
@@ -117,36 +119,49 @@ export interface Score {
   type: string;
 }
 
+export type ScoreType = 'ORAL' | 'TEST15' | 'MID' | 'FINAL';
+
 export interface Assignment {
-  id: string;
-  classId: string;
+  id: number;
+  classId?: number;
   title: string;
-  description: string;
+  description?: string;
   deadline: string;
-  createdBy: string;
-  createdAt: string;
+  type: ScoreType;
+  semester: 1 | 2;
+  createdBy?: string;
+  createdAt?: string;
   attachments?: string[];
-  filePath?: string; 
+  filePath?: string;
 }
 
 export interface Submission {
-  id: string;
-  assignmentId: string;
-  studentId: string;
-  submissionDate: string;
+  id: number;
+  assignmentId?: number;
+  studentId?: number;
+  assignment?: Assignment;
+  student?: Student;
+  submissionDate?: string;
+  submittedAt?: string;
   content?: string;
   attachments?: string[];
   grade?: number;
+  score?: number | null;
   feedback?: string;
+  comment?: string;
+  filePath?: string;
 }
 
 export interface Notification {
   id: string;
-  recipientId: string;
-  senderId: string;
+  receiverId?: string;
+  recipientId?: string;
+  senderId?: string;
+  roleTarget?: 'ALL' | 'ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT';
   title: string;
-  content: string;
-  type: string;
+  content?: string;
+  message?: string;
+  type: 'INFO' | 'WARNING' | 'IMPORTANT';
   isRead: boolean;
   createdAt: string;
 }
@@ -157,8 +172,9 @@ export interface Tuition {
   amount: number;
   dueDate: string;
   paidDate?: string;
-  status: 'PENDING' | 'PAID' | 'OVERDUE';
+  status: 'UNPAID' | 'PAID' | 'PENDING' | 'OVERDUE';
   description?: string;
+  createdAt?: string;
 }
 
 export interface Fund {
@@ -190,4 +206,17 @@ export interface Request {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
   respondedAt?: string;
+}
+
+export interface ParentRequest {
+  id: string;
+  parentId: string;
+  parentName?: string;
+  teacherId: string;
+  requestType: 'LEAVE' | 'MESSAGE';
+  content: string;
+  startDate?: string;
+  endDate?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
 }

@@ -1,231 +1,327 @@
 import {
-  Card,
-  Table,
-  Button,
-  Space,
-  Typography,
-  Tag,
   Avatar,
+  Button,
+  Card,
+  Col,
   Input,
-} from 'antd';
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
-import { useEffect, useState } from 'react';
-import { adminService } from '../../api/adminService';
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  Modal,
+  Form,
+  message
+} from "antd";
+import { useEffect, useState } from "react";
+import { PlusOutlined } from "@ant-design/icons";
+import { adminService } from "../../api/adminService";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
+const { Option } = Select;
 
-export default function StudentUI() {
+export default function AdminStudents() {
   const [students, setStudents] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const loadStudents = async () => {
+  const [search, setSearch] = useState("");
+  const [filterClass, setFilterClass] = useState<number | null>(null);
+
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [parents, setParents] = useState<any[]>([]);
+  const [form] = Form.useForm();
+
+  // ================= LOAD =================
+  const fetchStudents = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const res = await adminService.getStudents();
       setStudents(res);
     } catch {
-      console.log('load error');
-    } finally {
-      setLoading(false);
+      message.error("Lỗi load học sinh");
+    }
+    setLoading(false);
+  };
+  const fetchParents = async () => {
+    try {
+      const res = await adminService.getParents();
+      setParents(res);
+    } catch {
+      message.error("Lỗi load phụ huynh");
+    }
+  };
+  const fetchClasses = async () => {
+    try {
+      const res = await adminService.getClasses();
+      setClasses(res);
+    } catch {
+      message.error("Lỗi load lớp");
     }
   };
 
   useEffect(() => {
-    loadStudents();
+    fetchStudents();
+    fetchClasses();
+    fetchParents();
   }, []);
+
+  // ================= FILTER =================
+  const filteredData = students.filter((s) => {
+    const matchName = s.fullName
+      ?.toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchClass = filterClass
+      ? s.classId === filterClass
+      : true;
+
+    return matchName && matchClass;
+  });
+
+  // ================= CRUD =================
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+
+      if (editing) {
+        await adminService.updateStudent(
+          editing.id,
+          values,
+          values.classId,
+          values.parentIds
+        );
+        message.success("Cập nhật thành công");
+      } else {
+        await adminService.createStudent(
+          values,
+          values.classId,
+          values.parentIds
+        );
+        message.success("Thêm thành công (đã tạo user)");
+      }
+
+      setOpen(false);
+      setEditing(null);
+      form.resetFields();
+      fetchStudents();
+    } catch {
+      message.error("Lỗi thao tác");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await adminService.deleteStudent(id);
+      message.success("Xóa thành công");
+      fetchStudents();
+    } catch {
+      message.error("Xóa thất bại");
+    }
+  };
+
+  // ================= TABLE =================
 
   const columns = [
     {
-      title: 'NAME',
-      dataIndex: 'fullName',
-      render: (text: string) => (
-        <Space>
-          <Avatar
-            style={{
-              background: '#E2DFFF',
-              color: '#3525CD',
-              fontWeight: 'bold',
-            }}
-          >
-            {text?.charAt(0)}
-          </Avatar>
-          <Text strong style={{ color: '#1B1B24' }}>
-            {text}
-          </Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'EMAIL',
-      dataIndex: 'email',
-      render: (email: string) => (
-        <Text type="secondary">{email}</Text>
-      ),
-    },
-    {
-      title: 'PHONE',
-      dataIndex: 'phone',
-    },
-    {
-      title: 'CLASS',
-      dataIndex: 'className',
-      render: (c: string) => (
-        <Tag
-          style={{
-            borderRadius: 20,
-            padding: '0 12px',
-            fontWeight: 'bold',
-          }}
-          color="blue"
-        >
-          {c}
-        </Tag>
-      ),
-    },
-    {
-      title: 'STATUS',
-      dataIndex: 'status',
-      render: (s: string) => (
-        <Tag
-          color={s === 'ACTIVE' ? 'green' : 'orange'}
-          style={{ borderRadius: 20 }}
-        >
-          {s || 'ACTIVE'}
-        </Tag>
-      ),
-    },
-    {
-      title: 'ACTIONS',
-      align: 'right' as const,
+      title: "Học sinh",
       render: (_: any, record: any) => (
         <Space>
-          <Button
-            icon={<EditOutlined style={{ color: '#3525CD' }} />}
-            type="text"
-            className="hover:bg-indigo-50"
-          />
-          <Button
-            danger
-            icon={<DeleteOutlined />}
-            type="text"
-            className="hover:bg-red-50"
-          />
+          <Avatar style={{ backgroundColor: "#1677ff" }}>
+            {record.fullName?.charAt(0).toUpperCase()}
+          </Avatar>
+          <div>
+            <div>{record.fullName}</div>
+            <small>{record.email}</small>
+          </div>
         </Space>
-      ),
+      )
     },
-  ];
-
-  return (
-    <div
-      style={{
-        padding: 32,
-        background: '#F8F9FA',
-        minHeight: '100vh',
-      }}
-    >
-      {/* HEADER */}
-      <div className="flex justify-between items-end mb-8">
-        <div>
-          <Title
-            level={2}
-            style={{
-              margin: 0,
-              fontWeight: 800,
-              color: '#1E00A9',
+    {
+      title: "Mã HS",
+      dataIndex: "studentCode"
+    },
+    {
+      title: "Lớp",
+      render: (r: any) => r.className || "Chưa có"
+    },
+    {
+      title: "SĐT",
+      dataIndex: "phone"
+    },
+    {
+      title: "Giới tính",
+      dataIndex: "gender"
+    },
+    {
+      title: "Trạng thái",
+      render: (r: any) =>
+        r.active ? (
+          <Tag color="green">Hoạt động</Tag>
+        ) : (
+          <Tag color="red">Đã khóa</Tag>
+        )
+    },
+    {
+      title: "Hành động",
+      render: (r: any) => (
+        <Space>
+          <Button
+            onClick={() => {
+              setEditing(r);
+              setOpen(true);
+              form.setFieldsValue(r);
             }}
           >
-            Student Directory
-          </Title>
-          <Text type="secondary">
-            Manage and monitor academic records for all students
-          </Text>
-        </div>
+            Sửa
+          </Button>
 
-        <Space size="middle">
-          <Input
-            prefix={<SearchOutlined />}
-            placeholder="Search student..."
-            style={{
-              width: 260,
-              borderRadius: 20,
-            }}
-          />
+          <Button danger onClick={() => handleDelete(r.id)}>
+            Xóa
+          </Button>
 
           <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            style={{
-              background: '#3525CD',
-              borderRadius: 10,
-              height: 40,
-              fontWeight: 'bold',
-              boxShadow: '0 4px 10px rgba(53,37,205,0.2)',
+            danger={r.active}
+            type={r.active ? "default" : "primary"}
+            onClick={async () => {
+              try {
+                await adminService.updateStudent(
+                  r.id,
+                  { active: !r.active },
+                  r.classId
+                );
+                message.success("Đã cập nhật trạng thái");
+                fetchStudents();
+              } catch {
+                message.error("Lỗi cập nhật");
+              }
             }}
           >
-            Add Student
+            {r.active ? "Tắt" : "Bật"}
           </Button>
         </Space>
-      </div>
+      )
+    }
+  ];
 
-      {/* TABLE CARD */}
-      <Card
-        bordered={false}
-        style={{
-          borderRadius: 16,
-          boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
-          borderLeft: '4px solid #3525CD',
-        }}
-        title={
-          <div>
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: 16,
-                color: '#1B1B24',
-              }}
-            >
-              Students
-            </div>
-            <div
-              style={{
-                fontSize: 10,
-                color: '#999',
-                fontWeight: 'bold',
-                letterSpacing: 1,
-              }}
-            >
-              ACADEMIC YEAR 2023-2024
-            </div>
-          </div>
-        }
-      >
-        <Table
-          dataSource={students}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 5,
-            style: { marginTop: 16 },
+  // ================= UI =================
+
+  return (
+    <Card>
+      <Row justify="space-between" style={{ marginBottom: 16 }}>
+        <Title level={4}>Quản lý học sinh</Title>
+
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => {
+            setEditing(null);
+            setOpen(true);
+            form.resetFields();
           }}
-        />
-      </Card>
+        >
+          Thêm học sinh
+        </Button>
+      </Row>
 
-      {/* STYLE FIX TABLE */}
-      <style>{`
-        .ant-table-thead > tr > th {
-          background: #f8fafc !important;
-          font-size: 11px !important;
-          font-weight: 700 !important;
-          color: #64748b !important;
-          letter-spacing: 0.08em;
-        }
-      `}</style>
-    </div>
+      <Row gutter={12} style={{ marginBottom: 16 }}>
+        <Col>
+          <Input
+            placeholder="Tìm theo tên"
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </Col>
+
+        <Col>
+          <Select
+            placeholder="Lọc theo lớp"
+            allowClear
+            style={{ width: 200 }}
+            onChange={(v) => setFilterClass(v)}
+          >
+            {classes.map((c) => (
+              <Option key={c.id} value={c.id}>
+                {c.name}
+              </Option>
+            ))}
+          </Select>
+        </Col>
+      </Row>
+
+      <Table
+        loading={loading}
+        dataSource={filteredData}
+        columns={columns}
+        rowKey="id"
+      />
+
+      {/* MODAL */}
+      <Modal
+        open={open}
+        onCancel={() => setOpen(false)}
+        onOk={handleSubmit}
+        title={editing ? "Sửa học sinh" : "Thêm học sinh"}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            name="fullName"
+            label="Tên học sinh"
+            rules={[{ required: true }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="dob"
+            label="Ngày sinh"
+            rules={[{ required: true }]}
+          >
+            <Input type="date" />
+          </Form.Item>
+
+          <Form.Item name="gender" label="Giới tính">
+            <Select>
+              <Option value="MALE">Nam</Option>
+              <Option value="FEMALE">Nữ</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item name="phone" label="SĐT">
+            <Input />
+          </Form.Item>
+
+          <Form.Item name="classId" label="Lớp">
+            <Select placeholder="Chọn lớp">
+              {classes.map((c) => (
+                <Option key={c.id} value={c.id}>
+                  {c.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item name="parentIds" label="Phụ huynh">
+            <Select
+              mode="multiple"
+              showSearch
+              placeholder="Tìm theo tên hoặc SĐT"
+              optionFilterProp="children"
+              filterOption={(input, option) => {
+                const text = option?.children?.toString().toLowerCase() || "";
+                return text.includes(input.toLowerCase());
+              }}
+            >
+              {parents.map((p) => (
+                <Select.Option key={p.id} value={p.id}>
+                  {p.fullName} - {p.phone}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </Card>
   );
 }

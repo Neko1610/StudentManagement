@@ -23,6 +23,8 @@ public class Parent {
     private String email;
 
     private String job;
+    private String address;
+    private String gender;
 
     @ManyToMany
     @JoinTable(name = "parent_students",
@@ -72,6 +74,22 @@ public class Parent {
 
     public void setJob(String job) {
         this.job = job;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
     }
 
     public Set<Student> getStudents() {

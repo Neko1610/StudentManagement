@@ -2,6 +2,8 @@ package com.schoolmanagement.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 public class Tuition {
@@ -16,12 +18,25 @@ public class Tuition {
     private String year;
 
     @NotBlank
-    private String status;
+    private String status = "UNPAID";
 
     public Tuition() {
     }
 
     private Double amount;
+    private String description;
+    private LocalDate dueDate;
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    public void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (status == null || status.isBlank()) {
+            status = "UNPAID";
+        }
+    }
 
     public Long getId() {
         return id;
@@ -61,5 +76,33 @@ public class Tuition {
 
     public void setAmount(Double amount) {
         this.amount = amount;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Long getStudentId() {
+        return student != null ? student.getId() : null;
     }
 }

@@ -9,6 +9,7 @@ import AdminParents from './pages/admin/AdminParents';
 import AdminSchedules from './pages/admin/AdminSchedules';
 import AdminStudents from './pages/admin/AdminStudents';
 import AdminTeachers from './pages/admin/AdminTeachers';
+import AdminTuitions from './pages/admin/AdminTuitions';
 import ParentContacts from './pages/parent/ParentContacts';
 import ParentDashboard from './pages/parent/ParentDashboard';
 import ParentFeedback from './pages/parent/ParentFeedback';
@@ -21,13 +22,15 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import StudentExams from './pages/student/StudentExams';
 import StudentProfile from './pages/student/StudentProfile';
 import StudentSchedule from './pages/student/StudentSchedule';
+import StudentNotifications from './pages/student/StudentNotifications';
 import TeacherAssignments from './pages/teacher/TeacherAssignments';
 import TeacherSubmissions from './pages/teacher/TeacherSubmission';
 import TeacherClasses from './pages/teacher/TeacherClasses';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import StudentScores from './pages/student/StudentScores';
 import TeacherProfile from './pages/teacher/TeacherEditProfile';
-import TeacherNotifications from './pages/teacher/TeacherProfile';
+import TeacherNotifications from './pages/teacher/TeacherNotification';
+import TeacherRequests from './pages/teacher/TeacherRequests';
 import TeacherSchedule from './pages/teacher/TeacherSchedule';
 import TeacherAttendance from './pages/teacher/TeacherAttendance';
 import TeacherScores from './pages/teacher/TeacherScores';
@@ -158,6 +161,14 @@ export default function AppRoutes() {
           </ProtectedPage>
         }
       />
+      <Route
+        path="/teacher/requests"
+        element={
+          <ProtectedPage allowedRoles={['TEACHER']}>
+            <TeacherRequests />
+          </ProtectedPage>
+        }
+      />
 
       <Route
         path="/teacher/profile"
@@ -193,7 +204,7 @@ export default function AppRoutes() {
           </ProtectedPage>
         }
       />
-      
+
       <Route
         path="/student/scores"
         element={
@@ -215,6 +226,14 @@ export default function AppRoutes() {
         element={
           <ProtectedPage allowedRoles={['STUDENT']}>
             <StudentProfile />
+          </ProtectedPage>
+        }
+      />
+      <Route
+        path="/student/notifications"
+        element={
+          <ProtectedPage allowedRoles={['STUDENT']}>
+            <StudentNotifications />
           </ProtectedPage>
         }
       />
@@ -330,6 +349,14 @@ export default function AppRoutes() {
         element={
           <ProtectedPage allowedRoles={['ADMIN']}>
             <AdminSchedules />
+          </ProtectedPage>
+        }
+      />
+      <Route
+        path="/admin/tuition"
+        element={
+          <ProtectedPage allowedRoles={['ADMIN']}>
+            <AdminTuitions />
           </ProtectedPage>
         }
       />

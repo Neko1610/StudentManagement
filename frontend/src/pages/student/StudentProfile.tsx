@@ -42,15 +42,27 @@ export default function StudentProfile() {
 
   const handleSaveProfile = async (values: any) => {
     try {
-      await studentService.updateProfile(Number(user?.id), values);
+      if (!profile?.classId) {
+        message.error("ClassId không hợp lệ");
+        return;
+      }
+
+      const { studentCode, className, ...cleanValues } = values;
+
+      await studentService.updateProfile(
+        profile.id,
+        cleanValues,
+        profile.classId
+      );
       message.success('Profile updated successfully');
       setEditing(false);
       loadProfile();
-    } catch (error) {
+
+    } catch (error: any) {
+      console.log("❌ ERROR:", error.response?.data || error);
       message.error('Failed to update profile');
     }
   };
-
   return (
     <ProfileDashboardLayout
       loading={loading}

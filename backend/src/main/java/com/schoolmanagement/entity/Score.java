@@ -16,7 +16,8 @@ public class Score {
     @ManyToOne
     @JoinColumn(name = "subject_id")
     private Subject subject;
-
+    @Column(name = "semester")
+    private Integer semester;
     private Double oral1;
     private Double test15_1;
     private Double mid1;
@@ -76,6 +77,14 @@ public class Score {
 
     public void setSubject(Subject subject) {
         this.subject = subject;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
     }
 
     public Double getOral1() {

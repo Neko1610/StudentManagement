@@ -20,9 +20,11 @@ export default function StudentProfile() {
 
   const loadProfile = async () => {
     try {
-      if (!user?.id) return;
+      const email = (user as any)?.email || (user as any)?.username;
 
-      const data = await studentService.getProfile(user.id);
+      if (!email) return;
+
+      const data = await studentService.getProfile(email);
 
       setProfile(data);
 
@@ -34,6 +36,7 @@ export default function StudentProfile() {
         gender: data.gender,
       });
     } catch (error) {
+      console.error(error);
       message.error('Failed to load profile');
     } finally {
       setLoading(false);

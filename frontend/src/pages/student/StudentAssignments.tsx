@@ -17,14 +17,28 @@ export default function StudentAssignments() {
   const [semester, setSemester] = useState(1);
   // 🔥 load student
   useEffect(() => {
-    if (user?.id) {
+    if (user) {
       loadStudent();
     }
-  }, [user?.id]);
+  }, [user]);
 
   const loadStudent = async () => {
-    const data = await studentService.getProfile(user!.id);
-    setStudent(data);
+    try {
+      const email = (user as any)?.email || (user as any)?.username;
+
+      if (!email) {
+        message.error("Không tìm thấy email user");
+        return;
+      }
+
+      const data = await studentService.getProfile(email);
+
+      setStudent(data);
+
+    } catch (err) {
+      console.error(err);
+      message.error("Load student thất bại");
+    }
   };
 
   // 🔥 load assignments

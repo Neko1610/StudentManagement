@@ -1,5 +1,13 @@
 package com.schoolmanagement.service;
 
+import com.lowagie.text.Document;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
 import com.schoolmanagement.dto.ScoreDTO;
 import com.schoolmanagement.entity.Assignment;
 import com.schoolmanagement.entity.Score;
@@ -12,12 +20,17 @@ import com.schoolmanagement.repository.ScoreRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.TeacherRepository;
 import com.schoolmanagement.util.ResourceNotFoundException;
+
+import org.apache.poi.ss.usermodel.Color;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -26,6 +39,8 @@ public class ScoreService {
     private final StudentRepository studentRepository;
     private final ScoreExportService scoreExportService;
     private final TeacherRepository teacherRepository;
+    @Autowired
+    private ActivityLogService activityLogService;
 
     public ScoreService(ScoreRepository scoreRepository, StudentRepository studentRepository,
             ScoreExportService scoreExportService, TeacherRepository teacherRepository) {
@@ -189,7 +204,17 @@ public class ScoreService {
             throw new RuntimeException("Score already exists → use update!");
         }
 
-        return scoreRepository.save(score);
+        Score saved = scoreRepository.save(score);
+
+        activityLogService.log(
+                "Teacher",
+                "TEACHER",
+                "Entered Scores",
+                saved.getStudent().getFullName(),
+                saved.getStudent().getStudentClass().getName(),
+                "Updated");
+
+        return saved;
     }
 
     public Score update(Long id, Score updated, Integer semester) {
@@ -207,7 +232,17 @@ public class ScoreService {
             current.setFinal2(updated.getFinal2());
         }
 
-        return scoreRepository.save(current);
+        Score saved = scoreRepository.save(current);
+
+        activityLogService.log(
+                "Teacher",
+                "TEACHER",
+                "Updated Scores",
+                current.getStudent().getFullName(),
+                current.getStudent().getStudentClass().getName(),
+                "Updated");
+
+        return saved;
     }
 
     @Transactional
@@ -385,30 +420,113 @@ public class ScoreService {
         try {
             Student student = studentRepository.findById(studentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
             List<Score> scores = scoreRepository.findByStudent(student);
 
+            // 🔥 loại trùng môn
+            Map<String, Score> map = new LinkedHashMap<>();
+            for (Score s : scores) {
+                map.put(s.getSubject().getName(), s);
+            }
+
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            com.lowagie.text.Document doc = new com.lowagie.text.Document();
-            com.lowagie.text.pdf.PdfWriter.getInstance(doc, out);
+            Document doc = new Document();
+            PdfWriter.getInstance(doc, out);
 
             doc.open();
-            doc.add(new com.lowagie.text.Paragraph("STUDENT SCORE REPORT"));
-            doc.add(new com.lowagie.text.Paragraph(student.getFullName()));
 
-            for (Score s : scores) {
-                doc.add(new com.lowagie.text.Paragraph(
-                        s.getSubject().getName()
-                                + " | Oral: " + safe(s.getOral1())
-                                + " | 15m: " + safe(s.getTest15_1())
-                                + " | Mid: " + safe(s.getMid1())
-                                + " | Final: " + safe(s.getFinal1())));
+            // ===== HEADER =====
+            Font schoolFont = new Font(Font.HELVETICA, 12, Font.BOLD);
+            Paragraph school = new Paragraph("TRƯỜNG THPT NGUYỄN TRÃI", schoolFont);
+            school.setAlignment(Element.ALIGN_CENTER);
+            doc.add(school);
+
+            Font titleFont = new Font(Font.HELVETICA, 18, Font.BOLD);
+            Paragraph title = new Paragraph("BẢNG ĐIỂM HỌC SINH", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            doc.add(title);
+
+            doc.add(new Paragraph(" "));
+
+            // ===== INFO =====
+            doc.add(new Paragraph("Họ tên: " + student.getFullName()));
+            doc.add(new Paragraph("Lớp: " + student.getStudentClass().getName()));
+
+            doc.add(new Paragraph(" "));
+
+            // ===== HỌC KỲ 1 =====
+            doc.add(new Paragraph("HỌC KỲ 1", new Font(Font.HELVETICA, 14, Font.BOLD)));
+
+            PdfPTable table1 = createTable();
+
+            for (Score s : map.values()) {
+                addRow(table1,
+                        s.getSubject().getName(),
+                        safe(s.getOral1()),
+                        safe(s.getTest15_1()),
+                        safe(s.getMid1()),
+                        safe(s.getFinal1()));
             }
+
+            doc.add(table1);
+
+            doc.add(new Paragraph(" "));
+
+            // ===== HỌC KỲ 2 =====
+            doc.add(new Paragraph("HỌC KỲ 2", new Font(Font.HELVETICA, 14, Font.BOLD)));
+
+            PdfPTable table2 = createTable();
+
+            for (Score s : map.values()) {
+                addRow(table2,
+                        s.getSubject().getName(),
+                        safe(s.getOral2()),
+                        safe(s.getTest15_2()),
+                        safe(s.getMid2()),
+                        safe(s.getFinal2()));
+            }
+
+            doc.add(table2);
 
             doc.close();
             return out.toByteArray();
+
         } catch (Exception e) {
             throw new RuntimeException("PDF_ERROR");
         }
+    }
+
+    private PdfPTable createTable() {
+        PdfPTable table = new PdfPTable(6);
+        table.setWidthPercentage(100);
+
+        addHeader(table, "Môn học");
+        addHeader(table, "Miệng");
+        addHeader(table, "15p");
+        addHeader(table, "Giữa kỳ");
+        addHeader(table, "Cuối kỳ");
+        addHeader(table, "TB");
+
+        return table;
+    }
+
+    private void addHeader(PdfPTable table, String text) {
+        Font font = new Font(Font.HELVETICA, 12, Font.BOLD);
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setBackgroundColor(new java.awt.Color(220, 220, 220));
+        table.addCell(cell);
+    }
+
+    private void addRow(PdfPTable table, String subject, double oral, double test, double mid, double fin) {
+
+        double avg = (oral + test + mid * 2 + fin * 3) / 6;
+
+        table.addCell(subject);
+        table.addCell(String.valueOf(oral));
+        table.addCell(String.valueOf(test));
+        table.addCell(String.valueOf(mid));
+        table.addCell(String.valueOf(fin));
+        table.addCell(String.format("%.1f", avg));
     }
 
     public byte[] exportAll() throws IOException {

@@ -7,6 +7,8 @@ import com.schoolmanagement.repository.AttendanceRepository;
 import com.schoolmanagement.repository.ClazzRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.util.ResourceNotFoundException;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +19,8 @@ public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final StudentRepository studentRepository;
     private final ClazzRepository clazzRepository;
+    @Autowired
+    private ActivityLogService activityLogService;
 
     public AttendanceService(AttendanceRepository attendanceRepository, StudentRepository studentRepository,
             ClazzRepository clazzRepository) {
@@ -44,35 +48,54 @@ public class AttendanceService {
         return attendanceRepository.findByStudent(student);
     }
 
-   public Attendance create(Attendance attendance, Long studentId, Long classId) {
+    public Attendance create(Attendance attendance, Long studentId, Long classId) {
 
-    Student student = studentRepository.findById(studentId)
-            .orElseThrow(() -> new RuntimeException("Student not found"));
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
 
-    Clazz clazz = clazzRepository.findById(classId)
-            .orElseThrow(() -> new RuntimeException("Class not found"));
+        Clazz clazz = clazzRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Class not found"));
 
-    // 🔥 CHECK EXIST
-    Optional<Attendance> existing =
-            attendanceRepository.findByStudentIdAndDateAndPeriod(
-                    studentId,
-                    attendance.getDate(),
-                    attendance.getPeriod()
-            );
+        // 🔥 CHECK EXIST
+        Optional<Attendance> existing = attendanceRepository.findByStudentIdAndDateAndPeriod(
+                studentId,
+                attendance.getDate(),
+                attendance.getPeriod());
 
-    if (existing.isPresent()) {
-        // 👉 UPDATE
-        Attendance old = existing.get();
-        old.setStatus(attendance.getStatus());
-        return attendanceRepository.save(old);
+        if (existing.isPresent()) {
+            // 👉 UPDATE
+            Attendance old = existing.get();
+            old.setStatus(attendance.getStatus());
+            Attendance saved = attendanceRepository.save(old);
+
+            activityLogService.log(
+                    "Teacher",
+                    "TEACHER",
+                    "Updated Attendance",
+                    student.getFullName(),
+                    clazz.getName(),
+                    saved.getStatus());
+
+            return saved;
+        }
+
+        // 👉 CREATE NEW
+        attendance.setStudent(student);
+        attendance.setClazz(clazz);
+
+        Attendance saved = attendanceRepository.save(attendance);
+
+        activityLogService.log(
+                "Teacher",
+                "TEACHER",
+                "Attendance Taken",
+                student.getFullName(),
+                clazz.getName(),
+                attendance.getStatus());
+
+        return saved;
     }
 
-    // 👉 CREATE NEW
-    attendance.setStudent(student);
-    attendance.setClazz(clazz);
-
-    return attendanceRepository.save(attendance);
-}
     public Attendance update(Long id, Attendance updated) {
         Attendance existing = getById(id);
         existing.setDate(updated.getDate());

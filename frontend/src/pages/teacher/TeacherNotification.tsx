@@ -3,7 +3,7 @@ import { Button, Card, Form, Input, Select, Space, Spin, Table, Tag, Typography,
 import { useEffect, useState } from 'react';
 import { notificationService } from '../../api/notificationService';
 import { Notification } from '../../types';
-
+import './style.css';
 const { Title } = Typography;
 
 export default function TeacherNotification() {
@@ -37,52 +37,115 @@ export default function TeacherNotification() {
 
   return (
     <Spin spinning={loading}>
-      <div className="page-stack">
+      <div className="page-container">
+
+        {/* HEADER */}
         <div className="page-heading">
-          <div>
-            <Title level={2} className="page-title">Class Notifications</Title>
-            <div className="page-subtitle">
-              Send updates only to students or parents in your assigned classes.
-            </div>
+          <Title level={2} className="page-title">
+            Class Notifications
+          </Title>
+          <div className="page-subtitle">
+            Send updates to students or parents in your assigned classes.
           </div>
         </div>
 
-        <Card title={<Space><BellOutlined /> Send Class Notification</Space>}>
-          <Form form={form} layout="vertical" onFinish={handleSendNotification} initialValues={{ type: 'INFO' }}>
-            <Form.Item
-              label="Recipients"
-              name="recipientType"
-              rules={[{ required: true, message: 'Select recipients' }]}
+        <div className="grid-2">
+
+          {/* LEFT FORM */}
+          <Card className="notification-card accent-bar">
+            <div className="card-header">
+              <BellOutlined />
+              <span>Send Class Notification</span>
+            </div>
+
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSendNotification}
+              initialValues={{ type: 'INFO' }}
             >
-              <Select placeholder="Select recipients">
-                <Select.Option value="STUDENT">Students in my classes</Select.Option>
-                <Select.Option value="PARENT">Parents of my classes</Select.Option>
-              </Select>
-            </Form.Item>
+              <Form.Item
+                label="Recipients"
+                name="recipientType"
+                rules={[{ required: true }]}
+              >
+                <Select>
+                  <Select.Option value="STUDENT">
+                    Students in my classes
+                  </Select.Option>
+                  <Select.Option value="PARENT">
+                    Parents of my classes
+                  </Select.Option>
+                </Select>
+              </Form.Item>
 
-            <Form.Item label="Title" name="title" rules={[{ required: true, message: 'Enter a title' }]}>
-              <Input placeholder="Notification title" />
-            </Form.Item>
+              <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+                <Input placeholder="Notification title" />
+              </Form.Item>
 
-            <Form.Item label="Message" name="message" rules={[{ required: true, message: 'Enter a message' }]}>
-              <Input.TextArea rows={4} placeholder="Notification message" />
-            </Form.Item>
+              <Form.Item name="message" label="Message" rules={[{ required: true }]}>
+                <Input.TextArea rows={4} placeholder="Write message..." />
+              </Form.Item>
 
-            <Form.Item label="Type" name="type" rules={[{ required: true, message: 'Select type' }]}>
-              <Select placeholder="Select type">
-                <Select.Option value="INFO">Info</Select.Option>
-                <Select.Option value="WARNING">Warning</Select.Option>
-                <Select.Option value="IMPORTANT">Important</Select.Option>
-              </Select>
-            </Form.Item>
+              <Form.Item name="type" label="Type" rules={[{ required: true }]}>
+                <Select>
+                  <Select.Option value="INFO">Info</Select.Option>
+                  <Select.Option value="WARNING">Warning</Select.Option>
+                  <Select.Option value="IMPORTANT">Important</Select.Option>
+                </Select>
+              </Form.Item>
 
-            <Button type="primary" htmlType="submit" icon={<SendOutlined />}>
-              Send Notification
-            </Button>
-          </Form>
-        </Card>
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<SendOutlined />}
+                className="send-btn"
+                block
+              >
+                Send Notification
+              </Button>
+            </Form>
+          </Card>
 
-        <Card title="Recent Notifications" bodyStyle={{ padding: 0 }}>
+          {/* RIGHT - TIPS */}
+          <Card className="tips-clean">
+            <div className="tips-header">COMMUNICATION TIPS</div>
+
+            <div className="tip-row">
+              <span className="tip-check">✔</span>
+              <div>
+                <span className="tip-bold">Be Concise:</span>
+                <span className="tip-text">
+                  {' '}Keep messages short for better readability.
+                </span>
+              </div>
+            </div>
+
+            <div className="tip-row">
+              <span className="tip-check">✔</span>
+              <div>
+                <span className="tip-bold">Timing Matters:</span>
+                <span className="tip-text">
+                  {' '}Send before 8PM for best reach.
+                </span>
+              </div>
+            </div>
+
+            <div className="tip-row">
+              <span className="tip-check">✔</span>
+              <div>
+                <span className="tip-bold">Privacy:</span>
+                <span className="tip-text">
+                  {' '}Avoid sensitive personal info.
+                </span>
+              </div>
+            </div>
+          </Card>
+
+        </div>
+
+        {/* TABLE */}
+        <Card title="Recent Notifications" className="table-card">
           <Table
             rowKey="id"
             dataSource={notifications}
@@ -92,13 +155,24 @@ export default function TeacherNotification() {
               { title: 'Message', render: (_, row) => row.content || row.message },
               {
                 title: 'Target',
-                render: (_, row) => (row.receiverId ? `User #${row.receiverId}` : row.roleTarget || 'Class'),
+                render: (_, row) =>
+                  row.receiverId
+                    ? `User #${row.receiverId}`
+                    : row.roleTarget || 'Class',
               },
               {
                 title: 'Type',
                 dataIndex: 'type',
                 render: (type) => (
-                  <Tag color={type === 'IMPORTANT' ? 'red' : type === 'WARNING' ? 'gold' : 'blue'}>
+                  <Tag
+                    color={
+                      type === 'IMPORTANT'
+                        ? 'red'
+                        : type === 'WARNING'
+                          ? 'gold'
+                          : 'blue'
+                    }
+                  >
                     {type}
                   </Tag>
                 ),
@@ -106,6 +180,7 @@ export default function TeacherNotification() {
             ]}
           />
         </Card>
+
       </div>
     </Spin>
   );

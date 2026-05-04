@@ -1,4 +1,16 @@
-import { Avatar, Button, Card, Col, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import {
+  Avatar,
+  Button,
+  Card,
+  Col,
+  Row,
+  Space,
+  Spin,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
 import {
   ArrowUpOutlined,
   ReadOutlined,
@@ -17,15 +29,20 @@ export default function AdminDashboard() {
     teacherCount: 0,
     parentCount: 0,
   });
+
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStats();
+    loadActivity();
   }, []);
 
+  // 🔥 LOAD STATS
   const loadStats = async () => {
     try {
       setLoading(true);
+
       const [students, teachers, parents] = await Promise.all([
         adminService.getStudents(),
         adminService.getTeachers(),
@@ -44,16 +61,35 @@ export default function AdminDashboard() {
     }
   };
 
-  const recentActivity = [
-    { key: '1', student: 'Alex Rivera', action: 'New Registration', class: 'Advanced Physics II', date: '2 mins ago', status: 'Enrolled' },
-    { key: '2', student: 'Sarah Jenkins', action: 'Profile Edit', class: 'Humanities 101', date: '45 mins ago', status: 'Updated' },
-    { key: '3', student: 'Marcus Thorne', action: 'Fee Payment', class: 'Business Law', date: '2 hours ago', status: 'Completed' },
-  ];
+  // 🔥 LOAD ACTIVITY
+  const loadActivity = async () => {
+    try {
+      const data = await adminService.getActivity();
+      setRecentActivity(data || []);
+    } catch (e) {
+      console.error('Failed to load activity:', e);
+    }
+  };
 
+  // 🔥 TIME AGO
+  const timeAgo = (date: string) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const mins = Math.floor(diff / 60000);
+
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins} mins ago`;
+
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hours ago`;
+
+    return new Date(date).toLocaleDateString();
+  };
+
+  // 🔥 TABLE COLUMNS
   const columns = [
     {
-      title: 'Student',
-      dataIndex: 'student',
+      title: 'User',
+      dataIndex: 'userName',
       render: (text: string) => (
         <Space>
           <Avatar src={`https://i.pravatar.cc/150?u=${text}`} />
@@ -61,16 +97,65 @@ export default function AdminDashboard() {
         </Space>
       ),
     },
-    { title: 'Action', dataIndex: 'action' },
-    { title: 'Course / Class', dataIndex: 'class' },
-    { title: 'Date', dataIndex: 'date', render: (text: string) => <Text type="secondary">{text}</Text> },
+    {
+      title: 'Role',
+      dataIndex: 'role',
+      render: (r: string) => (
+        <Tag
+          color={
+            r === 'ADMIN'
+              ? 'red'
+              : r === 'TEACHER'
+              ? 'blue'
+              : r === 'PARENT'
+              ? 'green'
+              : 'default'
+          }
+        >
+          {r}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Action',
+      dataIndex: 'action',
+    },
+    {
+      title: 'Target',
+      dataIndex: 'target',
+    },
+    {
+      title: 'Class',
+      dataIndex: 'className',
+    },
     {
       title: 'Status',
       dataIndex: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'Enrolled' || status === 'Completed' ? 'green' : 'blue'}>
-          {status}
+      render: (s: string) => (
+        <Tag
+          color={
+            s === 'Enrolled'
+              ? 'green'
+              : s === 'Updated'
+              ? 'blue'
+              : s === 'Pending'
+              ? 'gold'
+              : s === 'Approved'
+              ? 'green'
+              : s === 'Rejected'
+              ? 'red'
+              : 'default'
+          }
+        >
+          {s}
         </Tag>
+      ),
+    },
+    {
+      title: 'Time',
+      dataIndex: 'createdAt',
+      render: (t: string) => (
+        <Text type="secondary">{timeAgo(t)}</Text>
       ),
     },
   ];
@@ -107,28 +192,47 @@ export default function AdminDashboard() {
       <div className="page-stack">
         <div className="page-heading">
           <div>
-            <Title level={2} className="page-title">System Overview</Title>
+            <Title level={2} className="page-title">
+              System Overview
+            </Title>
             <div className="page-subtitle">
               Real-time academic operations across students, teachers, and families.
             </div>
           </div>
-          <Button type="primary" icon={<ReadOutlined />}>Academic Year 2026</Button>
+          <Button type="primary" icon={<ReadOutlined />}>
+            Academic Year 2026
+          </Button>
         </div>
 
         <Row gutter={[24, 24]}>
           {statItems.map((item) => (
             <Col xs={24} sm={12} lg={8} key={item.label}>
               <Card className="stat-card">
-                <div className="stat-icon" style={{ color: item.color, background: item.bg }}>
+                <div
+                  className="stat-icon"
+                  style={{ color: item.color, background: item.bg }}
+                >
                   {item.icon}
                 </div>
-                <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Space
+                  align="start"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'space-between',
+                  }}
+                >
                   <Statistic
                     title={item.label}
                     value={item.value}
-                    valueStyle={{ color: '#172033', fontSize: 34, fontWeight: 800 }}
+                    valueStyle={{
+                      color: '#172033',
+                      fontSize: 34,
+                      fontWeight: 800,
+                    }}
                   />
-                  <Tag color="green" icon={<ArrowUpOutlined />}>{item.trend}</Tag>
+                  <Tag color="green" icon={<ArrowUpOutlined />}>
+                    {item.trend}
+                  </Tag>
                 </Space>
               </Card>
             </Col>
@@ -143,8 +247,9 @@ export default function AdminDashboard() {
           <Table
             columns={columns}
             dataSource={recentActivity}
+            rowKey="id"
             pagination={false}
-            scroll={{ x: 760 }}
+            scroll={{ x: 900 }}
           />
         </Card>
       </div>

@@ -9,4 +9,10 @@ export const authService = {
   logout: () => {
     return client.post('/auth/logout').then((res) => res.data);
   },
+  resetPassword: (data: {
+    oldPassword: string;
+    newPassword: string;
+  }) => {
+    return client.post('/auth/reset-password', data).then((res) => res.data);
+  },
 };

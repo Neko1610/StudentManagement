@@ -13,6 +13,8 @@ import com.schoolmanagement.repository.SubjectRepository;
 import com.schoolmanagement.repository.TeacherRepository;
 import com.schoolmanagement.repository.UserRepository;
 import com.schoolmanagement.util.ResourceNotFoundException;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -26,6 +28,8 @@ public class TeacherService {
     private final ScheduleRepository scheduleRepository;
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
+    @Autowired
+    private ActivityLogService activityLogService;
 
     public TeacherService(TeacherRepository teacherRepository,
             SubjectRepository subjectRepository,
@@ -169,6 +173,13 @@ public class TeacherService {
         }
 
         Teacher savedTeacher = teacherRepository.save(teacher);
+        activityLogService.log(
+                "Admin",
+                "ADMIN",
+                "New Teacher",
+                savedTeacher.getFullName(),
+                "-",
+                "Active");
 
         try {
             User user = new User();
@@ -244,7 +255,17 @@ public class TeacherService {
             clazzRepository.save(clazz);
         }
 
-        return teacherRepository.save(existing);
+        Teacher saved = teacherRepository.save(existing);
+
+        activityLogService.log(
+                "Admin",
+                "ADMIN",
+                "Updated Teacher",
+                saved.getFullName(),
+                "-",
+                "Updated");
+
+        return saved;
     }
 
     public void delete(Long id) {
@@ -266,5 +287,12 @@ public class TeacherService {
 
         // 🔥 3. XÓA TEACHER
         teacherRepository.deleteById(id);
+        activityLogService.log(
+                "Admin",
+                "ADMIN",
+                "Deleted Teacher",
+                teacher.getFullName(),
+                "-",
+                "Removed");
     }
 }

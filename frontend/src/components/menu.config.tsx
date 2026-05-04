@@ -8,108 +8,101 @@ import {
   FileOutlined,
   UserOutlined,
   CreditCardOutlined,
-  SolutionOutlined,
   BookOutlined,
 } from '@ant-design/icons';
+import { KeyOutlined } from '@ant-design/icons';
 
 export const menuConfig = [
   {
     key: 'dashboard',
-    label: 'Dashboard',
+    label: 'Trang chủ',
     icon: <DashboardOutlined />,
   },
   {
     key: 'classes',
-    label: 'Classes',
+    label: 'Lớp học',
     icon: <TeamOutlined />,
     roles: ['admin'],
   },
   {
     key: 'subjects',
-    label: 'Subjects',
+    label: 'Môn học',
     icon: <BookOutlined />,
     roles: ['admin'],
   },
   {
     key: 'profile',
-    label: 'Profile',
+    label: 'Hồ sơ',
     icon: <UserOutlined />,
-    roles: ['teacher', 'parent', 'student'], // 🔥 ADMIN KHÔNG CÓ
+    roles: ['teacher', 'parent', 'student'],
   },
 
   // ===== TEACHER =====
   {
     key: 'classes',
-    label: 'Classes',
+    label: 'Lớp học',
     icon: <TeamOutlined />,
     roles: ['teacher'],
   },
   {
     key: 'schedule',
-    label: 'Schedule',
+    label: 'Thời khóa biểu',
     icon: <CalendarOutlined />,
     roles: ['teacher', 'student'],
   },
   {
     key: 'attendance',
-    label: 'Attendance',
+    label: 'Điểm danh',
     icon: <CheckOutlined />,
     roles: ['teacher'],
   },
   {
     key: 'scores',
-    label: 'Scores',
+    label: 'Điểm số',
     icon: <FileTextOutlined />,
     roles: ['teacher', 'student'],
   },
   {
     key: 'assignments',
-    label: 'Assignments',
+    label: 'Bài tập',
     icon: <FileOutlined />,
     roles: ['teacher', 'student'],
   },
-   {
+  {
     key: 'submissions',
-    label: 'Submissions',
+    label: 'Bài nộp',
     icon: <FileTextOutlined />,
-    roles: ['teacher']
+    roles: ['teacher'],
   },
-
   {
     key: 'notifications',
-    label: 'Notifications',
+    label: 'Thông báo',
     icon: <BellOutlined />,
     roles: ['teacher', 'admin', 'student'],
   },
- 
+
   // ===== PARENT =====
   {
     key: 'students',
-    label: 'Students',
+    label: 'Học sinh',
     icon: <TeamOutlined />,
     roles: ['parent', 'admin'],
   },
   {
     key: 'tuition',
-    label: 'Tuition',
+    label: 'Học phí',
     icon: <CreditCardOutlined />,
     roles: ['parent', 'admin'],
   },
   {
-    key: 'feedback',
-    label: 'Feedback',
-    icon: <BellOutlined />,
-    roles: ['parent'],
-  },
-  {
     key: 'teachers',
-    label: 'Teachers',
+    label: 'Giáo viên',
     icon: <UserOutlined />,
     roles: ['parent', 'admin'],
   },
   {
     key: 'requests',
-    label: 'Requests',
+    label: 'Yêu cầu',
     icon: <FileOutlined />,
     roles: ['parent', 'teacher'],
   },
@@ -117,14 +110,20 @@ export const menuConfig = [
   // ===== ADMIN =====
   {
     key: 'parents',
-    label: 'Parents',
+    label: 'Phụ huynh',
     icon: <UserOutlined />,
     roles: ['admin'],
   },
   {
     key: 'schedules',
-    label: 'Schedules',
+    label: 'Thời khóa biểu',
     icon: <CalendarOutlined />,
     roles: ['admin'],
+  },
+  {
+    key: 'reset-password',
+    label: 'Đổi mật khẩu',
+    icon: <KeyOutlined />,
+    roles: ['admin', 'teacher', 'student', 'parent'],
   },
 ];

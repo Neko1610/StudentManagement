@@ -166,4 +166,6 @@ export const adminService = {
 
   deleteSubject: (id: string) =>
     client.delete(`/subjects/${id}`).then(res => res.data),
+  getActivity: () =>
+    client.get('/admin/activity').then(res => res.data),
 };

@@ -10,6 +10,8 @@ import com.schoolmanagement.repository.ParentRepository;
 import com.schoolmanagement.repository.ParentRequestRepository;
 import com.schoolmanagement.repository.TeacherRepository;
 import com.schoolmanagement.util.ResourceNotFoundException;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,8 @@ public class ParentRequestService {
     private final ParentRequestRepository parentRequestRepository;
     private final ParentRepository parentRepository;
     private final TeacherRepository teacherRepository;
+    @Autowired
+    private ActivityLogService activityLogService;
 
     public ParentRequestService(
             ParentRequestRepository parentRequestRepository,
@@ -53,6 +57,8 @@ public class ParentRequestService {
         request.setEndDate(dto.getEndDate());
         request.setStatus("PENDING");
         return parentRequestRepository.save(request);
+        
+        
     }
 
     public List<ParentRequest> getRequests(Long teacherId, String teacherEmail, Long parentId) {

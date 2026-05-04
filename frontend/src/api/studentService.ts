@@ -59,5 +59,9 @@ export const studentService = {
     return client.get(`/schedules/class/${classId}`)
       .then(res => (res.data || []).map(mapSchedule));
   },
-
+exportPdf: (studentId: number) => {
+  return client.get(`scores/export/student/${studentId}/pdf`, {
+    responseType: 'blob',
+  }).then(res => res.data);
+},
 };

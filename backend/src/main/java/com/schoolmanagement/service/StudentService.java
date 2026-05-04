@@ -7,6 +7,8 @@ import com.schoolmanagement.repository.ClazzRepository;
 import com.schoolmanagement.repository.ParentRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.util.ResourceNotFoundException;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.entity.Role;
@@ -21,6 +23,8 @@ public class StudentService {
     private final ClazzRepository clazzRepository;
     private final ParentRepository parentRepository;
     private final UserRepository userRepository;
+    @Autowired
+    private ActivityLogService activityLogService;
 
     public StudentService(StudentRepository studentRepository, ClazzRepository clazzRepository,
             ParentRepository parentRepository, UserRepository userRepository) {
@@ -95,6 +99,13 @@ public class StudentService {
         student.setActive(true);
         // 🔥 SAVE STUDENT
         Student savedStudent = studentRepository.save(student);
+        activityLogService.log(
+                "Admin",
+                "ADMIN",
+                "New Student",
+                savedStudent.getFullName(),
+                savedStudent.getStudentClass() != null ? savedStudent.getStudentClass().getName() : "-",
+                "Enrolled");
 
         // 🔥 TẠO USER
         if (savedStudent.getEmail() != null &&
@@ -186,7 +197,17 @@ public class StudentService {
             existing.setParents(parents);
         }
 
-        return studentRepository.save(existing);
+        Student saved = studentRepository.save(existing);
+
+        activityLogService.log(
+                "Admin",
+                "ADMIN",
+                "Updated Student",
+                saved.getFullName(),
+                saved.getStudentClass() != null ? saved.getStudentClass().getName() : "-",
+                "Updated");
+
+        return saved;
     }
 
     public void delete(Long id) {
@@ -200,5 +221,12 @@ public class StudentService {
 
         // 🔥 XÓA STUDENT
         studentRepository.delete(student);
+        activityLogService.log(
+                "Admin",
+                "ADMIN",
+                "Deleted Student",
+                student.getFullName(),
+                student.getStudentClass() != null ? student.getStudentClass().getName() : "-",
+                "Removed");
     }
 }

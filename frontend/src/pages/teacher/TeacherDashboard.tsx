@@ -22,7 +22,8 @@ import { useEffect, useState } from 'react';
 import { teacherService } from '../../api/teacherService';
 import { commonService } from '../../api/commonService';
 import { auth } from '../../utils/auth';
-import { Clazz, Schedule, Notification } from '../../types';
+import { Clazz, Schedule, Notification, ParentRequest } from '../../types';
+import { requestService } from '../../api/requestService';
 
 const { Title, Text } = Typography;
 
@@ -47,11 +48,13 @@ export default function TeacherDashboard() {
   const [, setSelectedClass] = useState<string | null>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [requests, setRequests] = useState<ParentRequest[]>([]);
 
   useEffect(() => {
     if (user?.email) {
       loadDashboardData();
       loadProfile(); // 🔥 thêm dòng này
+      requestService.getForTeacher().then(res => setRequests(res || []));
     }
   }, [user?.email]);
 
@@ -193,12 +196,18 @@ export default function TeacherDashboard() {
           </Col>
 
           <Col xs={24} xl={8}>
-            <Card title="Latest Notifications" extra={<a href="/teacher/notifications">View all</a>}>
+
+            {/* Notifications */}
+            <Card
+              title="Latest Notifications"
+              extra={<a href="/teacher/notifications">View all</a>}
+              style={{ marginBottom: 16 }}
+            >
               {notifications.length === 0 ? (
                 <Empty description="No notifications" />
               ) : (
                 <List
-                  dataSource={notifications}
+                  dataSource={notifications.slice(0, 3)}
                   renderItem={(n) => (
                     <List.Item className="soft-list-item">
                       <List.Item.Meta
@@ -215,6 +224,57 @@ export default function TeacherDashboard() {
                 />
               )}
             </Card>
+
+            {/* 🔥 Parent Requests (compact) */}
+            <Card
+              title="Parent Requests"
+              extra={<a href="/teacher/requests">View all</a>}
+            >
+              {requests.length === 0 ? (
+                <Empty description="No requests" />
+              ) : (
+                <List
+                  dataSource={requests.slice(0, 3)}
+                  renderItem={(req) => (
+                    <List.Item className="request-item">
+                      <div style={{ width: '100%' }}>
+
+                        {/* top */}
+                        <div className="request-top">
+                          <Text strong>
+                            {req.parentName || `Parent #${req.parentId}`}
+                          </Text>
+
+                          <Tag
+                            color={
+                              req.status === 'APPROVED'
+                                ? 'green'
+                                : req.status === 'REJECTED'
+                                  ? 'red'
+                                  : 'gold'
+                            }
+                          >
+                            {req.status}
+                          </Tag>
+                        </div>
+
+                        {/* content */}
+                        <div className="request-content">{req.content}</div>
+
+                        {/* date */}
+                        <div className="request-date">
+                          {req.startDate && req.endDate
+                            ? `${req.startDate} → ${req.endDate}`
+                            : 'No date'}
+                        </div>
+
+                      </div>
+                    </List.Item>
+                  )}
+                />
+              )}
+            </Card>
+
           </Col>
         </Row>
       </div>

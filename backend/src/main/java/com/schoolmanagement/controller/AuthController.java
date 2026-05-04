@@ -1,5 +1,6 @@
 package com.schoolmanagement.controller;
 
+import com.schoolmanagement.dto.ChangePasswordRequest;
 import com.schoolmanagement.dto.AuthRequest;
 import com.schoolmanagement.dto.AuthResponse;
 import com.schoolmanagement.service.AuthService;
@@ -21,5 +22,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
         return ResponseEntity.ok(authService.login(request.getUsername(), request.getPassword()));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request.getOldPassword(), request.getNewPassword());
+        return ResponseEntity.ok("Password updated successfully");
     }
 }

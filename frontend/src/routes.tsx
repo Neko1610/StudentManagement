@@ -12,9 +12,9 @@ import AdminTeachers from './pages/admin/AdminTeachers';
 import AdminTuitions from './pages/admin/AdminTuitions';
 import ParentContacts from './pages/parent/ParentContacts';
 import ParentDashboard from './pages/parent/ParentDashboard';
-import ParentFeedback from './pages/parent/ParentFeedback';
 import ParentProfile from './pages/parent/ParentProfile';
 import ParentRequests from './pages/parent/ParentRequests';
+import ResetPassword from './pages/ResetPassword';
 import ParentStudents from './pages/parent/ParentStudents';
 import ParentTuition from './pages/parent/ParentTuition';
 import StudentAssignments from './pages/student/StudentAssignments';
@@ -32,6 +32,7 @@ import TeacherProfile from './pages/teacher/TeacherEditProfile';
 import TeacherNotifications from './pages/teacher/TeacherNotification';
 import TeacherRequests from './pages/teacher/TeacherRequests';
 import TeacherSchedule from './pages/teacher/TeacherSchedule';
+
 import TeacherAttendance from './pages/teacher/TeacherAttendance';
 import TeacherScores from './pages/teacher/TeacherScores';
 import { auth } from './utils/auth';
@@ -93,7 +94,41 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route
+        path="/admin/reset-password"
+        element={
+          <ProtectedPage allowedRoles={['ADMIN']}>
+            <ResetPassword />
+          </ProtectedPage>
+        }
+      />
 
+      <Route
+        path="/teacher/reset-password"
+        element={
+          <ProtectedPage allowedRoles={['TEACHER']}>
+            <ResetPassword />
+          </ProtectedPage>
+        }
+      />
+
+      <Route
+        path="/student/reset-password"
+        element={
+          <ProtectedPage allowedRoles={['STUDENT']}>
+            <ResetPassword />
+          </ProtectedPage>
+        }
+      />
+
+      <Route
+        path="/parent/reset-password"
+        element={
+          <ProtectedPage allowedRoles={['PARENT']}>
+            <ResetPassword />
+          </ProtectedPage>
+        }
+      />
       <Route path="/" element={<RoleHomeRedirect />} />
 
       <Route
@@ -262,14 +297,7 @@ export default function AppRoutes() {
           </ProtectedPage>
         }
       />
-      <Route
-        path="/parent/feedback"
-        element={
-          <ProtectedPage allowedRoles={['PARENT']}>
-            <ParentFeedback />
-          </ProtectedPage>
-        }
-      />
+
       <Route
         path="/parent/teachers"
         element={

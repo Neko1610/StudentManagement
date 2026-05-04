@@ -99,7 +99,8 @@ export default function StudentScores() {
         blob = await studentService.exportScores(student.id);
         fileName = `BangDiem_HS_${student.id}.xlsx`;
       } else {
-        //  blob = await studentService.exportScoresPDF?.(student.id); // nếu bạn có API PDF
+        // ✅ FIX ở đây
+        blob = await studentService.exportPdf(student.id);
         fileName = `BangDiem_HS_${student.id}.pdf`;
       }
 
@@ -107,15 +108,18 @@ export default function StudentScores() {
       const link = document.createElement('a');
 
       link.href = url;
-      link.setAttribute('download', fileName);
+      link.download = fileName;
+
       document.body.appendChild(link);
       link.click();
+      link.remove();
 
     } catch (err) {
       console.error(err);
       message.error('Lỗi export');
     }
   };
+
 
   // ================= COLUMNS =================
   const columns = [

@@ -99,9 +99,9 @@ export default function StudentScores() {
         blob = await studentService.exportScores(student.id);
         fileName = `BangDiem_HS_${student.id}.xlsx`;
       } else {
-        // ✅ FIX ở đây
-        blob = await studentService.exportPdf(student.id);
-        fileName = `BangDiem_HS_${student.id}.pdf`;
+        // ✅ truyền semester vào
+        blob = await studentService.exportPdf(student.id, semester);
+        fileName = `BangDiem_HS_${student.id}_HK${semester}.pdf`;
       }
 
       const url = window.URL.createObjectURL(new Blob([blob]));
@@ -119,8 +119,6 @@ export default function StudentScores() {
       message.error('Lỗi export');
     }
   };
-
-
   // ================= COLUMNS =================
   const columns = [
     { title: 'Môn', dataIndex: 'subjectName' },

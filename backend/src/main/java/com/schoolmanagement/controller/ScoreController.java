@@ -133,8 +133,11 @@ public class ScoreController {
     }
 
     @GetMapping("/export/student/{studentId}/pdf")
-    public ResponseEntity<byte[]> exportPdfByStudent(@PathVariable Long studentId) {
-        byte[] data = scoreService.exportPdfByStudent(studentId);
+    public ResponseEntity<byte[]> exportPdfByStudent(
+            @PathVariable Long studentId,
+            @RequestParam Integer semester 
+    ) {
+        byte[] data = scoreService.exportPdfByStudent(studentId, semester);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,

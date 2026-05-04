@@ -3,8 +3,10 @@ package com.schoolmanagement.service;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
+import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
+import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
@@ -385,11 +387,11 @@ public class ScoreService {
             List<Score> scores = scoreRepository.findByStudent_StudentClass_Id(classId);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            com.lowagie.text.Document doc = new com.lowagie.text.Document();
-            com.lowagie.text.pdf.PdfWriter.getInstance(doc, out);
+            Document doc = new Document();
+            PdfWriter.getInstance(doc, out);
 
             doc.open();
-            doc.add(new com.lowagie.text.Paragraph("BẢNG ĐIỂM"));
+            doc.add(new Paragraph("BẢNG ĐIỂM"));
 
             for (Score s : scores) {
                 double oral = semester == 1 ? safe(s.getOral1()) : safe(s.getOral2());
@@ -397,15 +399,15 @@ public class ScoreService {
                 double mid = semester == 1 ? safe(s.getMid1()) : safe(s.getMid2());
                 double fin = semester == 1 ? safe(s.getFinal1()) : safe(s.getFinal2());
 
-                double avg = (oral + test + mid * 2 + fin * 3) / 6;
+                double kttx = (oral + test) / 2;
+                double avg = (kttx + mid * 2 + fin * 3) / 7;
 
-                doc.add(new com.lowagie.text.Paragraph(
+                doc.add(new Paragraph(
                         s.getStudent().getFullName() +
-                                " | " + oral +
-                                " | " + test +
+                                " | " + format(kttx) +
                                 " | " + mid +
                                 " | " + fin +
-                                " | " + String.format("%.1f", avg)));
+                                " | " + format(avg)));
             }
 
             doc.close();
@@ -416,10 +418,10 @@ public class ScoreService {
         }
     }
 
-    public byte[] exportPdfByStudent(Long studentId) {
+    public byte[] exportPdfByStudent(Long studentId, Integer semester) {
         try {
             Student student = studentRepository.findById(studentId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+                    .orElseThrow(() -> new RuntimeException("Student not found"));
 
             List<Score> scores = scoreRepository.findByStudent(student);
 
@@ -430,63 +432,89 @@ public class ScoreService {
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            Document doc = new Document();
+            Document doc = new Document(PageSize.A4, 40, 40, 40, 40);
             PdfWriter.getInstance(doc, out);
 
             doc.open();
 
+            // ===== FONT =====
+            Font normal = new Font(Font.HELVETICA, 11);
+            Font bold = new Font(Font.HELVETICA, 12, Font.BOLD);
+            Font titleFont = new Font(Font.HELVETICA, 16, Font.BOLD);
+
             // ===== HEADER =====
-            Font schoolFont = new Font(Font.HELVETICA, 12, Font.BOLD);
-            Paragraph school = new Paragraph("TRƯỜNG THPT NGUYỄN TRÃI", schoolFont);
-            school.setAlignment(Element.ALIGN_CENTER);
+            Paragraph school = new Paragraph("TRƯỜNG THPT NGUYỄN TRÃI", bold);
             doc.add(school);
 
-            Font titleFont = new Font(Font.HELVETICA, 18, Font.BOLD);
-            Paragraph title = new Paragraph("BẢNG ĐIỂM HỌC SINH", titleFont);
+            Paragraph title = new Paragraph("KẾT QUẢ HỌC TẬP", titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             doc.add(title);
+
+            Paragraph sub = new Paragraph(
+                    "Học kỳ: " + semester + "    Năm học: 2025 - 2026",
+                    normal);
+            sub.setAlignment(Element.ALIGN_CENTER);
+            doc.add(sub);
 
             doc.add(new Paragraph(" "));
 
             // ===== INFO =====
-            doc.add(new Paragraph("Họ tên: " + student.getFullName()));
-            doc.add(new Paragraph("Lớp: " + student.getStudentClass().getName()));
+            PdfPTable infoTable = new PdfPTable(2);
+            infoTable.setWidthPercentage(100);
 
+            infoTable.addCell(noBorder("Mã HS: "));
+            infoTable.addCell(noBorder("Họ và tên: " + student.getFullName()));
+            infoTable.addCell(noBorder(""));
+            infoTable.addCell(noBorder("Lớp: " + student.getStudentClass().getName()));
+
+            doc.add(infoTable);
             doc.add(new Paragraph(" "));
 
-            // ===== HỌC KỲ 1 =====
-            doc.add(new Paragraph("HỌC KỲ 1", new Font(Font.HELVETICA, 14, Font.BOLD)));
+            // ===== TABLE =====
+            PdfPTable table = createTable();
 
-            PdfPTable table1 = createTable();
+            int index = 1;
+            double totalAvg = 0;
+            double minSubject = 10;
+            int count = 0;
 
             for (Score s : map.values()) {
-                addRow(table1,
-                        s.getSubject().getName(),
-                        safe(s.getOral1()),
-                        safe(s.getTest15_1()),
-                        safe(s.getMid1()),
-                        safe(s.getFinal1()));
+
+                // ✅ lấy theo học kỳ
+                double oral = semester == 1 ? safe(s.getOral1()) : safe(s.getOral2());
+                double test = semester == 1 ? safe(s.getTest15_1()) : safe(s.getTest15_2());
+                double mid = semester == 1 ? safe(s.getMid1()) : safe(s.getMid2());
+                double fin = semester == 1 ? safe(s.getFinal1()) : safe(s.getFinal2());
+
+                double kttx = (oral + test) / 2;
+                double avg = (kttx + mid * 2 + fin * 3) / 6;
+
+                // 👉 tính KQHT
+                totalAvg += avg;
+                count++;
+                if (avg < minSubject) {
+                    minSubject = avg;
+                }
+
+                // 👉 add row
+                table.addCell(center(String.valueOf(index++)));
+                table.addCell(s.getSubject().getName());
+                table.addCell(center(format(kttx)));
+                table.addCell(center(format(mid)));
+                table.addCell(center(format(fin)));
+                table.addCell(center(format(avg)));
             }
 
-            doc.add(table1);
+            doc.add(table);
+
+            // ===== KQHT =====
+            double finalAvg = totalAvg / count;
+            String kqht = classify(finalAvg, minSubject);
 
             doc.add(new Paragraph(" "));
-
-            // ===== HỌC KỲ 2 =====
-            doc.add(new Paragraph("HỌC KỲ 2", new Font(Font.HELVETICA, 14, Font.BOLD)));
-
-            PdfPTable table2 = createTable();
-
-            for (Score s : map.values()) {
-                addRow(table2,
-                        s.getSubject().getName(),
-                        safe(s.getOral2()),
-                        safe(s.getTest15_2()),
-                        safe(s.getMid2()),
-                        safe(s.getFinal2()));
-            }
-
-            doc.add(table2);
+            doc.add(new Paragraph(
+                    "KQHT: " + kqht + " (TB: " + format(finalAvg) + ")",
+                    bold));
 
             doc.close();
             return out.toByteArray();
@@ -500,9 +528,9 @@ public class ScoreService {
         PdfPTable table = new PdfPTable(6);
         table.setWidthPercentage(100);
 
+        addHeader(table, "TT");
         addHeader(table, "Môn học");
-        addHeader(table, "Miệng");
-        addHeader(table, "15p");
+        addHeader(table, "KTTX");
         addHeader(table, "Giữa kỳ");
         addHeader(table, "Cuối kỳ");
         addHeader(table, "TB");
@@ -510,23 +538,39 @@ public class ScoreService {
         return table;
     }
 
-    private void addHeader(PdfPTable table, String text) {
-        Font font = new Font(Font.HELVETICA, 12, Font.BOLD);
-        PdfPCell cell = new PdfPCell(new Phrase(text, font));
-        cell.setBackgroundColor(new java.awt.Color(220, 220, 220));
-        table.addCell(cell);
+    private String classify(double avg, double min) {
+        if (avg >= 8.0 && min >= 6.5)
+            return "Giỏi";
+        if (avg >= 6.5 && min >= 5.0)
+            return "Khá";
+        if (avg >= 5.0 && min >= 3.5)
+            return "Trung bình";
+        return "Yếu";
     }
 
-    private void addRow(PdfPTable table, String subject, double oral, double test, double mid, double fin) {
+    private PdfPCell addHeader(PdfPTable table, String text) {
+        Font font = new Font(Font.HELVETICA, 11, Font.BOLD);
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setBackgroundColor(new java.awt.Color(220, 220, 220));
+        table.addCell(cell);
+        return cell;
+    }
 
-        double avg = (oral + test + mid * 2 + fin * 3) / 6;
+    private PdfPCell center(String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text));
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        return cell;
+    }
 
-        table.addCell(subject);
-        table.addCell(String.valueOf(oral));
-        table.addCell(String.valueOf(test));
-        table.addCell(String.valueOf(mid));
-        table.addCell(String.valueOf(fin));
-        table.addCell(String.format("%.1f", avg));
+    private PdfPCell noBorder(String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text));
+        cell.setBorder(Rectangle.NO_BORDER);
+        return cell;
+    }
+
+    private String format(double val) {
+        return String.format("%.1f", val);
     }
 
     public byte[] exportAll() throws IOException {

@@ -21,8 +21,10 @@ public class ParentRequestController {
     }
 
     @PostMapping
-    public ResponseEntity<ParentRequest> create(@Valid @RequestBody ParentRequestDTO request, Authentication authentication) {
-        if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getName())
+    public ResponseEntity<ParentRequest> create(@Valid @RequestBody ParentRequestDTO request,
+            Authentication authentication) {
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getName())
                 && (request.getParentEmail() == null || request.getParentEmail().isBlank())) {
             request.setParentEmail(authentication.getName());
         }
@@ -35,6 +37,14 @@ public class ParentRequestController {
             @RequestParam(required = false) String teacherEmail,
             @RequestParam(required = false) Long parentId) {
         return ResponseEntity.ok(parentRequestService.getRequests(teacherId, teacherEmail, parentId));
+    }
+
+    @GetMapping("/mine")
+    public ResponseEntity<List<ParentRequest>> getMine(Authentication authentication) {
+        String email = authentication.getName();
+
+        return ResponseEntity.ok(
+                parentRequestService.getByParentEmail(email));
     }
 
     @GetMapping("/teacher")

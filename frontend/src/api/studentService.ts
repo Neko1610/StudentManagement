@@ -11,6 +11,12 @@ const mapSchedule = (s: any): Schedule => ({
     s.room?.name ||
     s.roomName ||
     s.room ||
+    '',
+
+  // 🔥 THÊM DÒNG NÀY
+  teacherName:
+    s.teacherName ||
+    s.teacher?.fullName ||
     ''
 });
 export const studentService = {
@@ -30,6 +36,18 @@ export const studentService = {
   exportScores: (studentId: number) => {
     return client.get(`/scores/export/${studentId}`, {
       responseType: 'blob' // 🔥 bắt buộc
+    }).then(res => res.data);
+  },
+  exportScoresBySemester: (semester: 'HK1' | 'HK2', studentId: number) => {
+    return client.get(`/scores/export/student/${studentId}`, {
+      params: { semester: semester === 'HK1' ? 1 : 2 },
+      responseType: 'blob',
+    }).then(res => res.data);
+  },
+  exportPdfBySemester: (semester: 'HK1' | 'HK2', studentId: number) => {
+    return client.get(`/scores/export/student/${studentId}/pdf`, {
+      params: { semester: semester === 'HK1' ? 1 : 2 },
+      responseType: 'blob',
     }).then(res => res.data);
   },
   getScoresByStudent: (studentId: number) =>

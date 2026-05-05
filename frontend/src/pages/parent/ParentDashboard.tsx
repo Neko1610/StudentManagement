@@ -6,7 +6,7 @@ import { commonService } from '../../api/commonService';
 import { auth } from '../../utils/auth';
 import { Notification, Student } from '../../types';
 import { useNavigate } from 'react-router-dom';
-
+import { requestService } from '../../api/requestService';
 const { Title, Text } = Typography;
 
 export default function ParentDashboard() {
@@ -15,6 +15,8 @@ export default function ParentDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [requestCount, setRequestCount] = useState(0);
+  const [tuitionStatus, setTuitionStatus] = useState<'Paid' | 'Unpaid' | 'No Data'>('No Data');
 
   useEffect(() => {
     loadDashboardData();
@@ -23,6 +25,8 @@ export default function ParentDashboard() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
+
+      // ✅ load cái cũ trước (an toàn)
       const [childrenData, notificationsData] = await Promise.all([
         parentService.getChildren(user?.email || ''),
         commonService.getNotifications(),
@@ -30,8 +34,43 @@ export default function ParentDashboard() {
 
       setChildren(childrenData);
       setNotifications(notificationsData.slice(0, 5));
+
+      // ===== REQUEST =====
+      try {
+        const requestData = await requestService.getMine();
+        setRequestCount(requestData?.length || 0);
+      } catch (err) {
+        console.error('Request lỗi:', err);
+        setRequestCount(0);
+      }
+
+      // ===== TUITION =====
+      // ===== TUITION =====
+      try {
+        let tuitionData = null;
+
+        if (childrenData?.length > 0) {
+          tuitionData = await parentService.getTuition(childrenData[0].id);
+        }
+
+        if (!tuitionData) {
+          setTuitionStatus('No Data');
+        } else if (Array.isArray(tuitionData)) {
+          const unpaid = tuitionData.some(t => t.status === 'UNPAID');
+          setTuitionStatus(unpaid ? 'Unpaid' : 'Paid');
+        } else {
+          setTuitionStatus(
+            tuitionData.status === 'UNPAID' ? 'Unpaid' : 'Paid'
+          );
+        }
+
+      } catch (err) {
+        console.error('Tuition lỗi:', err);
+        setTuitionStatus('No Data');
+      }
+
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      console.error('Dashboard lỗi chính:', error);
     } finally {
       setLoading(false);
     }
@@ -76,7 +115,16 @@ export default function ParentDashboard() {
               <div className="stat-icon" style={{ color: '#0f766e', background: '#ccfbf1' }}>
                 <CreditCardOutlined />
               </div>
-              <Statistic title="Tuition" value="Open" />
+              <Statistic
+                title="Tuition"
+                value={
+                  tuitionStatus === 'Paid'
+                    ? 'Đã đóng'
+                    : tuitionStatus === 'Unpaid'
+                      ? 'Chưa đóng'
+                      : 'Không có'
+                }
+              />
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
@@ -84,7 +132,10 @@ export default function ParentDashboard() {
               <div className="stat-icon" style={{ color: '#9333ea', background: '#f3e8ff' }}>
                 <FileTextOutlined />
               </div>
-              <Statistic title="Requests" value="Ready" />
+              <Statistic
+                title="Requests"
+                value={requestCount}
+              />
             </Card>
           </Col>
         </Row>

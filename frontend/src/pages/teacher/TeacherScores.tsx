@@ -1,17 +1,28 @@
 import {
-  Table,
   Button,
-  Modal,
+  Card,
   Form,
   InputNumber,
+  Modal,
   Select,
+  Spin,
+  Table,
   message,
-  Card,
-  Spin
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { teacherService } from '../../api/teacherService';
 import { auth } from '../../utils/auth';
+
+const scoreAlreadyExistsMessage = 'Score already exists';
+
+const getErrorMessage = (error: any) => {
+  const data = error?.response?.data;
+  if (typeof data === 'string') return data;
+  return data?.message || data?.error || error?.message || 'Unknown error';
+};
+
+const toScoreValue = (value: unknown) =>
+  value === undefined || value === null || value === '' ? null : Number(value);
 
 export default function TeacherScores() {
   const [classes, setClasses] = useState<any[]>([]);
@@ -31,51 +42,53 @@ export default function TeacherScores() {
 
   const user = auth.getUser();
 
-  // ================= INIT =================
   useEffect(() => {
     if (!user?.email) return;
 
     const load = async () => {
-      const t = await teacherService.getProfile(user.email);
-      setTeacher(t);
+      const teacherRes = await teacherService.getProfile(user.email);
+      setTeacher(teacherRes);
 
-      const cls = await teacherService.getClasses(user.email);
-      setClasses(cls);
+      const classRes = await teacherService.getClasses(user.email);
+      setClasses(classRes);
     };
 
     load();
   }, [user?.email]);
 
-  // ================= LOAD =================
   const fetchStudents = async (classId: number) => {
     setSelectedClassId(classId);
 
     if (!user?.email) return;
 
     const studentsRes = await teacherService.getStudentsByClass(classId);
-    const scoresRes = await teacherService.getScoresByClass(
-      classId,
-      user.email
-    );
+    const scoresRes = await teacherService.getScoresByClass(classId, user.email);
 
-    const merged = studentsRes.map((s: any) => ({
-      ...s,
-      scores: scoresRes.filter((sc: any) => sc.studentId === s.id)
+    const merged = studentsRes.map((student: any) => ({
+      ...student,
+      scores: scoresRes.filter((score: any) => Number(score.studentId) === Number(student.id)),
     }));
 
     setStudents(merged);
   };
 
-  // ================= HELPER =================
-  const getScore = (r: any) =>
-    r.scores?.find(
-      (s: any) => s.subjectName === teacher?.subject?.name
+  const teacherSubjectId = Number(teacher?.subject?.id ?? teacher?.subjectId);
+  const teacherSubjectName = teacher?.subject?.name ?? teacher?.subjectName;
+
+  const getScore = (student: any, targetSemester = semester) =>
+    student.scores?.find(
+      (score: any) =>
+        Number(score.studentId) === Number(student.id) &&
+        Number(score.semester) === Number(targetSemester) &&
+        (
+          Number(score.subjectId) === teacherSubjectId ||
+          score.subjectName === teacherSubjectName
+        )
     );
 
-  // ================= EXPORT =================
   const handleExport = async () => {
     if (!selectedClassId) {
-      message.error('Chọn lớp trước');
+      message.error('Select a class first');
       return;
     }
 
@@ -86,16 +99,10 @@ export default function TeacherScores() {
       let fileName;
 
       if (exportType === 'excel') {
-        blob = await teacherService.exportScoreExcel(
-          selectedClassId,
-          semester
-        );
+        blob = await teacherService.exportScoreExcel(selectedClassId, semester);
         fileName = `BangDiem_Lop${selectedClassId}_HK${semester}.xlsx`;
       } else {
-        blob = await teacherService.exportScorePDF(
-          selectedClassId,
-          semester
-        );
+        blob = await teacherService.exportScorePDF(selectedClassId, semester);
         fileName = `BangDiem_Lop${selectedClassId}_HK${semester}.pdf`;
       }
 
@@ -106,152 +113,164 @@ export default function TeacherScores() {
       link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
-
     } catch (err) {
       console.error(err);
-      message.error('Lỗi export');
+      message.error('Export failed');
     } finally {
       setLoadingExport(false);
     }
   };
 
-  // ================= MODAL =================
   const openAdd = (student: any) => {
+    form.resetFields();
     setSelectedStudent(student);
     setOpen(true);
-    form.setFieldsValue({ semester });
+
+    const score = getScore(student);
+    form.setFieldsValue({
+      semester,
+      oral: semester === 1 ? score?.oral1 : score?.oral2,
+      test15: semester === 1 ? score?.test15_1 : score?.test15_2,
+      mid: semester === 1 ? score?.mid1 : score?.mid2,
+      final: semester === 1 ? score?.final1 : score?.final2,
+    });
   };
 
-  // ================= SUBMIT =================
   const handleSubmit = async () => {
     const values = await form.validateFields();
 
+    if (!selectedStudent?.id || !teacherSubjectId || !selectedClassId || !user?.email) {
+      message.error('Missing student, subject, or class data');
+      return;
+    }
+
     const data = {
-      student: { id: selectedStudent.id },
-      subject: { id: teacher.subject.id },
-      semester: values.semester,
-      ...values
+      studentId: Number(selectedStudent.id),
+      subjectId: teacherSubjectId,
+      semester: Number(values.semester),
+      oral: toScoreValue(values.oral),
+      test15: toScoreValue(values.test15),
+      mid: toScoreValue(values.mid),
+      final: toScoreValue(values.final),
     };
 
     try {
-      const found = students
-        .flatMap((s: any) => s.scores || [])
-        .find(
-          (sc: any) =>
-            sc.studentId === selectedStudent.id &&
-            sc.subjectName === teacher.subject.name
-        );
+      console.log('Submitting score payload', data);
+      await teacherService.createScore(data);
+      message.success('Score created');
+    } catch (err) {
+      const errorMessage = getErrorMessage(err);
 
-      if (found) {
-        await teacherService.updateScore(found.id, data, values.semester);
-        message.success('Cập nhật thành công');
-      } else {
-        await teacherService.createScore(data);
-        message.success('Thêm thành công');
+      if (!errorMessage.includes(scoreAlreadyExistsMessage)) {
+        console.error('Save score failed', err);
+        message.error(errorMessage || 'Failed to save score');
+        return;
       }
 
-      setOpen(false);
-      fetchStudents(selectedClassId!);
+      try {
+        const latestScores = await teacherService.getScoresByClass(selectedClassId, user.email);
+        const existing = latestScores.find(
+          (score: any) =>
+            Number(score.studentId) === data.studentId &&
+            Number(score.semester) === data.semester &&
+            (
+              Number(score.subjectId) === data.subjectId ||
+              score.subjectName === teacherSubjectName
+            )
+        );
 
-    } catch (err) {
-      console.error(err);
-      message.error('Lỗi lưu điểm');
+        if (!existing?.id) {
+          throw new Error('Backend reported an existing score, but refresh did not return its id');
+        }
+
+        console.log('Updating existing score payload', { id: existing.id, ...data });
+        await teacherService.updateScore(existing.id, data, data.semester);
+        message.success('Score updated');
+      } catch (updateErr) {
+        console.error('Update score fallback failed', updateErr);
+        message.error(getErrorMessage(updateErr) || 'Failed to update score');
+        return;
+      }
+    }
+
+    try {
+      setOpen(false);
+      await fetchStudents(selectedClassId);
+    } catch (refreshErr) {
+      console.error('Refresh scores failed', refreshErr);
     }
   };
 
-  // ================= TABLE =================
   const columns = [
-    { title: 'Tên học sinh', dataIndex: 'fullName' },
+    { title: 'Student', dataIndex: 'fullName' },
     {
-      title: 'Miệng',
-      render: (_: any, r: any) => {
-        const s = getScore(r);
-        return semester === 1 ? s?.oral1 ?? '-' : s?.oral2 ?? '-';
-      }
+      title: 'Oral',
+      render: (_: any, record: any) => {
+        const score = getScore(record);
+        return semester === 1 ? score?.oral1 ?? '-' : score?.oral2 ?? '-';
+      },
     },
     {
-      title: '15p',
-      render: (_: any, r: any) => {
-        const s = getScore(r);
-        return semester === 1 ? s?.test15_1 ?? '-' : s?.test15_2 ?? '-';
-      }
+      title: '15m',
+      render: (_: any, record: any) => {
+        const score = getScore(record);
+        return semester === 1 ? score?.test15_1 ?? '-' : score?.test15_2 ?? '-';
+      },
     },
     {
-      title: 'Giữa kì',
-      render: (_: any, r: any) => {
-        const s = getScore(r);
-        return semester === 1 ? s?.mid1 ?? '-' : s?.mid2 ?? '-';
-      }
+      title: 'Midterm',
+      render: (_: any, record: any) => {
+        const score = getScore(record);
+        return semester === 1 ? score?.mid1 ?? '-' : score?.mid2 ?? '-';
+      },
     },
     {
-      title: 'Cuối kì',
-      render: (_: any, r: any) => {
-        const s = getScore(r);
-        return semester === 1 ? s?.final1 ?? '-' : s?.final2 ?? '-';
-      }
+      title: 'Final',
+      render: (_: any, record: any) => {
+        const score = getScore(record);
+        return semester === 1 ? score?.final1 ?? '-' : score?.final2 ?? '-';
+      },
     },
     {
-      title: 'Tổng',
-      render: (_: any, r: any) => {
-        const s = getScore(r);
+      title: 'Average',
+      render: (_: any, record: any) => {
+        const score = getScore(record);
 
-        let oral, test, mid, final;
+        const oral = semester === 1 ? score?.oral1 : score?.oral2;
+        const test = semester === 1 ? score?.test15_1 : score?.test15_2;
+        const mid = semester === 1 ? score?.mid1 : score?.mid2;
+        const final = semester === 1 ? score?.final1 : score?.final2;
 
-        if (semester === 1) {
-          oral = s?.oral1;
-          test = s?.test15_1;
-          mid = s?.mid1;
-          final = s?.final1;
-        } else {
-          oral = s?.oral2;
-          test = s?.test15_2;
-          mid = s?.mid2;
-          final = s?.final2;
-        }
+        if (oral == null && test == null && mid == null && final == null) return '-';
 
-        if (!oral && !test && !mid && !final) return '-';
+        const avg = ((oral || 0) + (test || 0) + (mid || 0) * 2 + (final || 0) * 3) / 7;
+        const color = avg >= 8 ? '#52c41a' : avg >= 5 ? '#faad14' : '#ff4d4f';
 
-        const avg =
-          ((oral || 0) +
-            (test || 0) +
-            (mid || 0) * 2 +
-            (final || 0) * 3) / 7;
-
-        let color = '';
-        if (avg >= 8) color = '#52c41a';
-        else if (avg >= 5) color = '#faad14';
-        else color = '#ff4d4f';
-
-        return (
-          <span style={{ color, fontWeight: 600 }}>
-            {avg.toFixed(1)}
-          </span>
-        );
-      }
+        return <span style={{ color, fontWeight: 600 }}>{avg.toFixed(1)}</span>;
+      },
     },
     {
-      title: 'Hành động',
+      title: 'Action',
       render: (_: any, record: any) => (
         <Button onClick={() => openAdd(record)} type="primary">
-          Nhập điểm
+          Enter Score
         </Button>
-      )
-    }
+      ),
+    },
   ];
 
-  // ================= UI =================
   return (
     <Spin spinning={loadingExport}>
-      <Card title="📊 Nhập điểm">
+      <Card title="Enter Scores">
         <div style={{ marginBottom: 16 }}>
           <Select
-            placeholder="Chọn lớp"
+            placeholder="Select class"
             style={{ width: 200 }}
             onChange={fetchStudents}
           >
-            {classes.map(c => (
-              <Select.Option key={c.id} value={c.id}>
-                {c.name}
+            {classes.map((clazz) => (
+              <Select.Option key={clazz.id} value={clazz.id}>
+                {clazz.name}
               </Select.Option>
             ))}
           </Select>
@@ -274,11 +293,7 @@ export default function TeacherScores() {
             <Select.Option value="pdf">PDF</Select.Option>
           </Select>
 
-          <Button
-            type="primary"
-            style={{ marginLeft: 10 }}
-            onClick={handleExport}
-          >
+          <Button type="primary" style={{ marginLeft: 10 }} onClick={handleExport}>
             Export
           </Button>
         </div>
@@ -289,49 +304,28 @@ export default function TeacherScores() {
           open={open}
           onCancel={() => setOpen(false)}
           onOk={handleSubmit}
-          title={`Nhập điểm - ${selectedStudent?.fullName}`}
+          title={`Enter Score - ${selectedStudent?.fullName || ''}`}
         >
           <Form form={form} layout="vertical">
-            <Form.Item name="semester" label="Học kỳ">
+            <Form.Item name="semester" label="Semester">
               <Select>
                 <Select.Option value={1}>HK1</Select.Option>
                 <Select.Option value={2}>HK2</Select.Option>
               </Select>
             </Form.Item>
 
-            {semester === 1 && (
-              <>
-                <Form.Item name="oral1" label="Miệng">
-                  <InputNumber style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item name="test15_1" label="15p">
-                  <InputNumber style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item name="mid1" label="Giữa kỳ">
-                  <InputNumber style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item name="final1" label="Cuối kỳ">
-                  <InputNumber style={{ width: '100%' }} />
-                </Form.Item>
-              </>
-            )}
-
-            {semester === 2 && (
-              <>
-                <Form.Item name="oral2" label="Miệng">
-                  <InputNumber style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item name="test15_2" label="15p">
-                  <InputNumber style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item name="mid2" label="Giữa kỳ">
-                  <InputNumber style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item name="final2" label="Cuối kỳ">
-                  <InputNumber style={{ width: '100%' }} />
-                </Form.Item>
-              </>
-            )}
+            <Form.Item name="oral" label="Oral">
+              <InputNumber min={0} max={10} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="test15" label="15m">
+              <InputNumber min={0} max={10} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="mid" label="Midterm">
+              <InputNumber min={0} max={10} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="final" label="Final">
+              <InputNumber min={0} max={10} style={{ width: '100%' }} />
+            </Form.Item>
           </Form>
         </Modal>
       </Card>

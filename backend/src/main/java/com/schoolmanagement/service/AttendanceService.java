@@ -57,8 +57,9 @@ public class AttendanceService {
                 .orElseThrow(() -> new RuntimeException("Class not found"));
 
         // 🔥 CHECK EXIST
-        Optional<Attendance> existing = attendanceRepository.findByStudentIdAndDateAndPeriod(
+        Optional<Attendance> existing = attendanceRepository.findByStudentIdAndClazzIdAndDateAndPeriod(
                 studentId,
+                classId,
                 attendance.getDate(),
                 attendance.getPeriod());
 
@@ -66,6 +67,8 @@ public class AttendanceService {
             // 👉 UPDATE
             Attendance old = existing.get();
             old.setStatus(attendance.getStatus());
+            old.setSession(attendance.getSession());
+            old.setRemark(attendance.getRemark());
             Attendance saved = attendanceRepository.save(old);
 
             activityLogService.log(
@@ -100,7 +103,9 @@ public class AttendanceService {
         Attendance existing = getById(id);
         existing.setDate(updated.getDate());
         existing.setPeriod(updated.getPeriod());
+        existing.setSession(updated.getSession());
         existing.setStatus(updated.getStatus());
+        existing.setRemark(updated.getRemark());
         return attendanceRepository.save(existing);
     }
 

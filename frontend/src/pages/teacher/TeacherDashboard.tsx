@@ -24,7 +24,7 @@ import { commonService } from '../../api/commonService';
 import { auth } from '../../utils/auth';
 import { Clazz, Schedule, Notification, ParentRequest } from '../../types';
 import { requestService } from '../../api/requestService';
-
+import { useNavigate } from 'react-router-dom';
 const { Title, Text } = Typography;
 
 const PERIOD_TIME: any = {
@@ -45,7 +45,7 @@ export default function TeacherDashboard() {
   const [classes, setClasses] = useState<Clazz[]>([]);
   const [todaySchedule, setTodaySchedule] = useState<Schedule[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [, setSelectedClass] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<ParentRequest[]>([]);
@@ -180,7 +180,10 @@ export default function TeacherDashboard() {
                           <Col xs={24} md={6} style={{ textAlign: 'right' }}>
                             {status === 'done' && <Tag color="green">Done</Tag>}
                             {status === 'ongoing' && (
-                              <Button type="primary" onClick={() => setSelectedClass(s.className)}>
+                              <Button
+                                type="primary"
+                                onClick={() => navigate(`/teacher/attendance`)}
+                              >
                                 Attendance
                               </Button>
                             )}

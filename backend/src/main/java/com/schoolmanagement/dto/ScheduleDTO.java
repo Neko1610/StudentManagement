@@ -7,24 +7,64 @@ public class ScheduleDTO {
     private String room;
     private String dayOfWeek;
     private Integer period;
+    private String teacherName;
 
-    public ScheduleDTO() {}
+    public ScheduleDTO() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getClassName() { return className; }
-    public void setClassName(String className) { this.className = className; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getSubjectName() { return subjectName; }
-    public void setSubjectName(String subjectName) { this.subjectName = subjectName; }
+    public String getClassName() {
+        return className;
+    }
 
-    public String getRoom() { return room; }
-    public void setRoom(String room) { this.room = room; }
+    public void setClassName(String className) {
+        this.className = className;
+    }
 
-    public String getDayOfWeek() { return dayOfWeek; }
-    public void setDayOfWeek(String dayOfWeek) { this.dayOfWeek = dayOfWeek; }
+    public String getSubjectName() {
+        return subjectName;
+    }
 
-    public Integer getPeriod() { return period; }
-    public void setPeriod(Integer period) { this.period = period; }
+    public void setSubjectName(String subjectName) {
+        this.subjectName = subjectName;
+    }
+
+    public String getTeacherName() {
+        return teacherName;
+    }
+
+    public void setTeacherName(String teacherName) {
+        this.teacherName = teacherName;
+    }   
+
+    public String getRoom() {
+        return room;
+    }
+
+    public void setRoom(String room) {
+        this.room = room;
+    }
+
+    public String getDayOfWeek() {
+        return dayOfWeek;
+    }
+
+    public void setDayOfWeek(String dayOfWeek) {
+        this.dayOfWeek = dayOfWeek;
+    }
+
+    public Integer getPeriod() {
+        return period;
+    }
+
+    public void setPeriod(Integer period) {
+        this.period = period;
+    }
 }

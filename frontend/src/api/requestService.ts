@@ -34,14 +34,7 @@ export const requestService = {
   },
 
   getMine: (): Promise<ParentRequest[]> => {
-    const user = auth.getUser();
-    return client
-      .get('/requests', {
-        params: {
-          parentId: user?.id && Number.isFinite(Number(user.id)) ? Number(user.id) : undefined,
-        },
-      })
-      .then((res) => res.data);
+    return client.get('/requests/mine').then((res) => res.data);
   },
 
   approve: (id: string): Promise<ParentRequest> =>

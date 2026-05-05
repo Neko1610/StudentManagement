@@ -97,6 +97,7 @@ export interface Schedule {
   room: string;
   dayOfWeek: string;
   period: number;
+  teacherName?: string;
 }
 
 export interface Attendance {
@@ -106,8 +107,9 @@ export interface Attendance {
   date: string;
   status: 'PRESENT' | 'ABSENT' | 'LATE';
   remark?: string;
+  period?: string;
+  session?: string;
 }
-
 export interface Score {
   id: string;
   studentId: string;

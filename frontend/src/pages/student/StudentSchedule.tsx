@@ -126,10 +126,9 @@ export default function StudentSchedule() {
                       <td key={day} className={day === today ? 'today-col' : ''}>
                         {cell ? (
                           <div className="schedule-card">
-                            <div className="class">{cell.className}</div>
-                            <div>{cell.subjectName}</div>
-                            <div className="room">
-                              Phòng: {cell.room || '-'}
+                            <div className="subject">{cell.subjectName}</div>
+                            <div className="teacher">
+                              {cell.teacherName || 'Chưa có GV'}
                             </div>
                           </div>
                         ) : (

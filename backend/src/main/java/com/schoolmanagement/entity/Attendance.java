@@ -25,8 +25,12 @@ public class Attendance {
     @NotBlank
     private String period;
 
+    private String session;
+
     @NotBlank
     private String status;
+
+    private String remark;
 
     public Attendance() {
     }
@@ -71,11 +75,27 @@ public class Attendance {
         this.period = period;
     }
 
+    public String getSession() {
+        return session;
+    }
+
+    public void setSession(String session) {
+        this.session = session;
+    }
+
     public String getStatus() {
         return status;
     }
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 }

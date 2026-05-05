@@ -57,8 +57,7 @@ public class ParentRequestService {
         request.setEndDate(dto.getEndDate());
         request.setStatus("PENDING");
         return parentRequestRepository.save(request);
-        
-        
+
     }
 
     public List<ParentRequest> getRequests(Long teacherId, String teacherEmail, Long parentId) {
@@ -121,6 +120,16 @@ public class ParentRequestService {
         }
         parentRepository.findById(request.getParentId())
                 .ifPresent(parent -> request.setParentName(parent.getFullName()));
+    }
+
+    public List<ParentRequest> getByParentEmail(String email) {
+        Parent parent = parentRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Parent not found"));
+
+        List<ParentRequest> requests = parentRequestRepository.findByParentIdOrderByCreatedAtDesc(parent.getId());
+
+        attachParentNames(requests);
+        return requests;
     }
 
     private Parent resolveParent(ParentRequestDTO dto) {

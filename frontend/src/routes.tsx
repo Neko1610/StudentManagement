@@ -156,6 +156,14 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/teacher/attendance/:classId"
+        element={
+          <ProtectedPage allowedRoles={['TEACHER']}>
+            <TeacherAttendance />
+          </ProtectedPage>
+        }
+      />
+       <Route
         path="/teacher/attendance"
         element={
           <ProtectedPage allowedRoles={['TEACHER']}>

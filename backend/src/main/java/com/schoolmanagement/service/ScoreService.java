@@ -175,6 +175,8 @@ public class ScoreService {
 
         dto.setId(s.getId());
         dto.setSubjectName(s.getSubject().getName());
+        dto.setSubjectId(s.getSubject().getId());
+        dto.setSemester(s.getSemester());
         dto.setStudentId(s.getStudent().getId());
         // HK1
         dto.setOral1(s.getOral1());
@@ -206,14 +208,22 @@ public class ScoreService {
             throw new RuntimeException("Score already exists → use update!");
         }
 
+        // 🔥 LOAD STUDENT THẬT
+        Student student = studentRepository.findById(score.getStudent().getId())
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        score.setStudent(student);
+
         Score saved = scoreRepository.save(score);
 
         activityLogService.log(
                 "Teacher",
                 "TEACHER",
                 "Entered Scores",
-                saved.getStudent().getFullName(),
-                saved.getStudent().getStudentClass().getName(),
+                student.getFullName(),
+                student.getStudentClass() != null
+                        ? student.getStudentClass().getName()
+                        : "N/A",
                 "Updated");
 
         return saved;
@@ -382,33 +392,94 @@ public class ScoreService {
         return scoreExportService.export(scores);
     }
 
-    public byte[] exportPdf(Long classId, Integer semester) {
+    public byte[] exportPdf(Long classId, Integer semester, String email) {
         try {
-            List<Score> scores = scoreRepository.findByStudent_StudentClass_Id(classId);
+            Teacher teacher = teacherRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Teacher not found"));
+
+            Long subjectId = teacher.getSubject().getId();
+
+            List<Score> scores = scoreRepository.findByStudent_StudentClass_Id(classId)
+                    .stream()
+                    .filter(s -> s.getSemester() == semester)
+                    .filter(s -> s.getSubject().getId().equals(subjectId)) // 🔥 FIX
+                    .toList();
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            Document doc = new Document();
+            Document doc = new Document(PageSize.A4, 40, 40, 40, 40);
             PdfWriter.getInstance(doc, out);
 
             doc.open();
-            doc.add(new Paragraph("BẢNG ĐIỂM"));
+
+            Font bold = new Font(Font.HELVETICA, 12, Font.BOLD);
+            Font titleFont = new Font(Font.HELVETICA, 16, Font.BOLD);
+
+            // ===== HEADER =====
+            doc.add(new Paragraph("TRƯỜNG THPT NGUYỄN TRÃI", bold));
+
+            Paragraph title = new Paragraph("BẢNG ĐIỂM LỚP", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            doc.add(title);
+
+            doc.add(new Paragraph("Giáo viên: " + teacher.getFullName(), bold));
+            doc.add(new Paragraph("Môn: " + teacher.getSubject().getName(), bold));
+
+            Paragraph sub = new Paragraph("Học kỳ: " + semester);
+            sub.setAlignment(Element.ALIGN_CENTER);
+            doc.add(sub);
+
+            doc.add(new Paragraph(" "));
+
+            // ===== TABLE =====
+            PdfPTable table = new PdfPTable(6);
+            table.setWidthPercentage(100);
+
+            addHeader(table, "STT");
+            addHeader(table, "Học sinh");
+            addHeader(table, "KTTX");
+            addHeader(table, "Giữa kỳ");
+            addHeader(table, "Cuối kỳ");
+            addHeader(table, "TB");
+
+            int index = 1;
 
             for (Score s : scores) {
-                double oral = semester == 1 ? safe(s.getOral1()) : safe(s.getOral2());
-                double test = semester == 1 ? safe(s.getTest15_1()) : safe(s.getTest15_2());
+
+                Double oral = semester == 1 ? s.getOral1() : s.getOral2();
+                Double test = semester == 1 ? s.getTest15_1() : s.getTest15_2();
                 double mid = semester == 1 ? safe(s.getMid1()) : safe(s.getMid2());
                 double fin = semester == 1 ? safe(s.getFinal1()) : safe(s.getFinal2());
 
-                double kttx = (oral + test) / 2;
-                double avg = (kttx + mid * 2 + fin * 3) / 7;
+                if ((oral == null || oral == 0) &&
+                        (test == null || test == 0) &&
+                        mid == 0 && fin == 0)
+                    continue;
 
-                doc.add(new Paragraph(
-                        s.getStudent().getFullName() +
-                                " | " + format(kttx) +
-                                " | " + mid +
-                                " | " + fin +
-                                " | " + format(avg)));
+                double sum = 0;
+                int count = 0;
+
+                if (oral != null) {
+                    sum += oral;
+                    count++;
+                }
+                if (test != null) {
+                    sum += test;
+                    count++;
+                }
+
+                double kttx = count > 0 ? sum / count : 0;
+
+                double avg = (kttx + mid + fin) / 3;
+
+                table.addCell(center(String.valueOf(index++)));
+                table.addCell(s.getStudent().getFullName());
+                table.addCell(center(format(kttx)));
+                table.addCell(center(format(mid)));
+                table.addCell(center(format(fin)));
+                table.addCell(center(format(avg)));
             }
+
+            doc.add(table);
 
             doc.close();
             return out.toByteArray();
@@ -451,7 +522,7 @@ public class ScoreService {
             doc.add(title);
 
             Paragraph sub = new Paragraph(
-                    "Học kỳ: " + semester + "    Năm học: 2025 - 2026",
+                    "Học kỳ: " + semester + "    Năm học: 2026 - 2027",
                     normal);
             sub.setAlignment(Element.ALIGN_CENTER);
             doc.add(sub);
@@ -462,10 +533,13 @@ public class ScoreService {
             PdfPTable infoTable = new PdfPTable(2);
             infoTable.setWidthPercentage(100);
 
-            infoTable.addCell(noBorder("Mã HS: "));
             infoTable.addCell(noBorder("Họ và tên: " + student.getFullName()));
             infoTable.addCell(noBorder(""));
-            infoTable.addCell(noBorder("Lớp: " + student.getStudentClass().getName()));
+            String className = student.getStudentClass() != null
+                    ? student.getStudentClass().getName()
+                    : "N/A";
+
+            infoTable.addCell(noBorder("Lớp: " + className));
 
             doc.add(infoTable);
             doc.add(new Paragraph(" "));

@@ -1,6 +1,7 @@
 import client from './client';
 import { Parent, Student, Tuition, Fund, Teacher, Request } from '../types';
 import { requestService } from './requestService';
+import { attendanceService } from './attendanceService';
 
 export const parentService = {
   getProfile: (email: string) =>
@@ -31,7 +32,7 @@ export const parentService = {
   getScoresByStudent: (studentId: number) =>
     client.get(`/scores/student/${studentId}`).then(res => res.data),
   getAttendanceByStudent: (studentId: number) =>
-    client.get(`/attendance/student/${studentId}`).then(res => res.data),
+    attendanceService.getByStudent(studentId),
 
   getAssignmentsByStudent: (studentId: number) =>
     client.get(`/assignments/student/${studentId}`).then(res => res.data),
@@ -42,10 +43,10 @@ export const parentService = {
   exportScoresExcelUrl: (studentId: number) =>
     `${client.defaults.baseURL}/scores/export/student/${studentId}`,
 
-  exportScoresPdfUrl: (studentId: number) =>
-    `${client.defaults.baseURL}/scores/export/student/${studentId}/pdf`,
-
-
+  exportScoreStudentPDF: (studentId: number, semester: number) => {
+    return `/scores/export/student/${studentId}/pdf?semester=${semester}`;
+  },
+  
   getTuition: (studentId: string) =>
     client.get(`/tuitions/student/${studentId}`).then(res => res.data),
 
@@ -55,6 +56,7 @@ export const parentService = {
   payTuition: (id: number) =>
     client.put(`/tuitions/${id}/pay`).then(res => res.data),
   createFund: (data: any, classId: string) =>
-  client.post(`/funds?classId=${classId}`, data).then(res => res.data),
-
+    client.post(`/funds?classId=${classId}`, data).then(res => res.data),
+  getRequests: (email: string) =>
+    client.get(`/requests/parent/${email}`).then(res => res.data),
 };

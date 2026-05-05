@@ -106,18 +106,20 @@ export default function ProfileDashboardLayout({
             </div>
 
             {/* Certificates */}
-            <div style={{ marginTop: 20 }}>
-              <Text strong>Chứng chỉ chuyên môn</Text>
+            {role === 'Giáo viên' && (
+              <div style={{ marginTop: 20 }}>
+                <Text strong>Chứng chỉ chuyên môn</Text>
 
-              <ul style={{ paddingLeft: 16, marginTop: 8 }}>
-                {(profile?.qualifications || "")
-                  .split(',')
-                  .filter(Boolean)
-                  .map((q: string, i: number) => (
-                    <li key={i}>{q.trim()}</li>
-                  ))}
-              </ul>
-            </div>
+                <ul style={{ paddingLeft: 16, marginTop: 8 }}>
+                  {(profile?.qualifications || "")
+                    .split(',')
+                    .filter(Boolean)
+                    .map((q: string, i: number) => (
+                      <li key={i}>{q.trim()}</li>
+                    ))}
+                </ul>
+              </div>
+            )}
           </Card>
         </div>
 

@@ -1,12 +1,12 @@
 import {
   Card, Table, Button, Space, Modal,
-  Form, Input, message, Spin, Tag
+  Form, Input, message, Spin, Tag, Tabs
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { teacherService } from '../../api/teacherService';
 import { Clazz, Student } from '../../types';
 import { auth } from '../../utils/auth';
-
+import { CrownOutlined } from '@ant-design/icons';
 export default function TeacherClasses() {
   const user = auth.getUser();
 
@@ -118,34 +118,21 @@ export default function TeacherClasses() {
           {classes.length === 0 ? (
             <p>No classes assigned</p>
           ) : (
-            <Space direction="vertical" style={{ width: '100%' }}>
-              {classes.map((clazz) => (
-                <Card
-                  key={clazz.id}
-                  hoverable
-                  onClick={() => handleSelectClass(clazz.id)}
-                  style={{
-                    cursor: 'pointer',
-                    backgroundColor:
-                      clazz.homeroom
-                        ? '#f6ffed'
-                        : selectedClass === clazz.id
-                        ? '#e6f7ff'
-                        : 'transparent',
-                    border: clazz.homeroom ? '2px solid #52c41a' : undefined
-                  }}
-                >
-                  <h3>
-                    {clazz.name}{' '}
+            <Tabs
+              activeKey={selectedClass?.toString()}
+              onChange={(key) => handleSelectClass(Number(key))}
+              items={classes.map((clazz) => ({
+                key: clazz.id.toString(),
+                label: (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {clazz.homeroom && (
-                      <Tag color="green">⭐ GVCN</Tag>
+                      <CrownOutlined style={{ color: '#faad14', fontSize: 14 }} />
                     )}
-                  </h3>
-
-                  <p>Students: {clazz.studentCount}</p>
-                </Card>
-              ))}
-            </Space>
+                    <span>{clazz.name}</span>
+                  </span>
+                )
+              }))}
+            />
           )}
         </Spin>
       </Card>

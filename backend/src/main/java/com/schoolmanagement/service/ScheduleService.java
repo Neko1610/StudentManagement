@@ -51,7 +51,8 @@ public class ScheduleService {
             dto.setId(s.getId());
             dto.setDayOfWeek(s.getDayOfWeek().name());
             dto.setPeriod(s.getPeriod());
-
+            dto.setTeacherName(
+                    s.getTeacher() != null ? s.getTeacher().getFullName() : null);
             dto.setClassName(s.getClazz().getName());
             dto.setSubjectName(
                     s.getSubject() != null

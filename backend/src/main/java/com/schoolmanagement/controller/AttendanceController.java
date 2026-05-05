@@ -51,14 +51,32 @@ public class AttendanceController {
 
         Attendance attendance = new Attendance();
 
-        // 🔥 FIX Ở ĐÂY
-        attendance.setPeriod(data.get("period").toString()); // AM4 / AM5 / PM
+        Object period = data.get("period");
+        Object session = data.get("session");
+        attendance.setPeriod(normalizePeriod(period != null ? period.toString() : session != null ? session.toString() : null));
+        if (session != null) {
+            attendance.setSession(session.toString());
+        }
 
         attendance.setStatus(data.get("status").toString());
         attendance.setDate(LocalDate.parse(data.get("date").toString()));
+        if (data.get("remark") != null) {
+            attendance.setRemark(data.get("remark").toString());
+        }
 
         return ResponseEntity.ok(
                 attendanceService.create(attendance, studentId, classId));
+    }
+
+    private String normalizePeriod(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("period is required");
+        }
+        return switch (value) {
+            case "AM4", "AM5" -> "1";
+            case "PM" -> "6";
+            default -> value;
+        };
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")

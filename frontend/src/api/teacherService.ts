@@ -7,6 +7,7 @@ import {
   Assignment,
   Submission
 } from '../types';
+import { attendanceService } from './attendanceService';
 
 const mapSchedule = (s: any): Schedule => ({
   id: s.id,
@@ -43,13 +44,11 @@ export const teacherService = {
   },
 
   getAttendance: async (classId: string): Promise<Attendance[]> => {
-    const res = await client.get(`/attendance/class/${classId}`);
-    return res.data || [];
+    return attendanceService.getByClass(classId);
   },
 
   markAttendance: async (data: any): Promise<Attendance> => {
-    const res = await client.post('/attendance', data);
-    return res.data;
+    return attendanceService.mark(data);
   },
 
   getSchedule: async (email: string): Promise<Schedule[]> => {

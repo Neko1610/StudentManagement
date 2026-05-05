@@ -4,6 +4,7 @@ import ProfileDashboardLayout from '../../components/ProfileDashboardLayout';
 import { parentService } from '../../api/parentService';
 import { Parent } from '../../types';
 import { auth } from '../../utils/auth';
+import { requestService } from '../../api/requestService';
 
 const inputStyle = { borderRadius: 12, minHeight: 42 };
 
@@ -14,10 +15,43 @@ export default function ParentProfile() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [form] = Form.useForm();
-
+  const [childrenCount, setChildrenCount] = useState(0);
+  const [requestCount, setRequestCount] = useState(0);
   useEffect(() => {
-    loadProfile();
-  }, []);
+    if (!user?.email) return;
+
+    const init = async () => {
+      try {
+        setLoading(true);
+
+        // profile
+        const data = await parentService.getProfile(user.email);
+        setProfile(data);
+
+        form.setFieldsValue({
+          fullName: data.fullName,
+          phone: data.phone,
+          email: data.email || user.email,
+          address: data.address,
+          gender: data.gender,
+        });
+
+        // stats
+        const children = await parentService.getChildren(user.email);
+        setChildrenCount(children?.length || 0);
+
+        const requests = await requestService.getMine();
+        setRequestCount(requests?.length || 0);
+
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    init();
+  }, [user?.email]);
 
   const loadProfile = async () => {
     try {
@@ -38,17 +72,17 @@ export default function ParentProfile() {
     }
   };
 
- const handleSaveProfile = async (values: any) => {
-  try {
-    await parentService.updateProfile(user?.email || '', values); // ✅ luôn dùng email
+  const handleSaveProfile = async (values: any) => {
+    try {
+      await parentService.updateProfile(user?.email || '', values); // ✅ luôn dùng email
 
-    message.success('Profile updated successfully');
-    setEditing(false);
-    loadProfile();
-  } catch (error) {
-    message.error('Failed to update profile');
-  }
-};
+      message.success('Profile updated successfully');
+      setEditing(false);
+      loadProfile();
+    } catch (error) {
+      message.error('Failed to update profile');
+    }
+  };
 
   return (
     <ProfileDashboardLayout
@@ -56,11 +90,15 @@ export default function ParentProfile() {
       form={form}
       fullName={profile?.fullName}
       role="Parent"
-      description={profile?.relationship || profile?.email || 'Phụ huynh theo dõi học tập'}
+      description={
+        profile?.relationship ||
+        profile?.email ||
+        'Phụ huynh theo dõi học tập'
+      }
       avatarSrc={profile?.avatar}
       stats={[
-        { label: 'Children', value: '--' },
-        { label: 'Requests', value: '--' },
+        { label: 'Children', value: childrenCount.toString() },
+        { label: 'Requests', value: requestCount.toString() },
         { label: 'Status', value: 'Active' },
       ]}
       editing={editing}

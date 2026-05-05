@@ -7,6 +7,8 @@ public class ScoreDTO {
 
     private Long id;
     private Long studentId;
+    private Long subjectId;
+    private Integer semester;
     private String subjectName;
 
     // HK1

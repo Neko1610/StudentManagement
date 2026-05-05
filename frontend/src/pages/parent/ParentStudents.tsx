@@ -1,10 +1,27 @@
-import { Button, Card, Empty, List, Space, Spin, Table, Tabs, Tag, Typography, message } from 'antd';
+import { Button, Card, Empty, List, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { parentService } from '../../api/parentService';
+import { studentService } from '../../api/studentService';
 import { auth } from '../../utils/auth';
-import { Student } from '../../types';
+import { Attendance, Student } from '../../types';
+import { normalizeAttendanceList } from '../../utils/attendance';
 
 const { Title, Text } = Typography;
+
+type SemesterKey = 'HK1' | 'HK2';
+
+interface AttendanceDateRow {
+  date: string;
+  records: Attendance[];
+}
+
+interface ScoreRow {
+  subjectName: string;
+  oral?: number;
+  p15?: number;
+  mid?: number;
+  final?: number;
+}
 
 const mergeScoresBySubject = (scores: any[]) => {
   const bySubject = new Map<string, any>();
@@ -24,16 +41,56 @@ const mergeScoresBySubject = (scores: any[]) => {
   return Array.from(bySubject.values());
 };
 
+const downloadBlob = (blob: BlobPart, fileName: string) => {
+  const url = window.URL.createObjectURL(new Blob([blob]));
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 export default function ParentStudents() {
   const user = auth.getUser();
   const [children, setChildren] = useState<Student[]>([]);
   const [selectedChild, setSelectedChild] = useState<Student | null>(null);
   const [scores, setScores] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<any[]>([]);
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSemester, setSelectedSemester] = useState<SemesterKey>('HK1');
 
   const mergedScores = useMemo(() => mergeScoresBySubject(scores), [scores]);
+
+  const scoreRows = useMemo<ScoreRow[]>(() => {
+    return mergedScores.map((score) => {
+      const isHK1 = selectedSemester === 'HK1';
+
+      return {
+        subjectName: score.subjectName,
+        oral: isHK1 ? score.oral1 : score.oral2,
+        p15: isHK1 ? score.p151 ?? score.test15_1 : score.p152 ?? score.test15_2,
+        mid: isHK1 ? score.mid1 : score.mid2,
+        final: isHK1 ? score.final1 : score.final2,
+      };
+    });
+  }, [mergedScores, selectedSemester]);
+
+  const attendanceRows = useMemo<AttendanceDateRow[]>(() => {
+    const byDate = new Map<string, Attendance[]>();
+
+    normalizeAttendanceList(attendance).forEach((record) => {
+      byDate.set(record.date, [...(byDate.get(record.date) || []), record]);
+    });
+
+    return Array.from(byDate.entries()).map(([date, records]) => ({
+      date,
+      records,
+    }));
+  }, [attendance]);
 
   useEffect(() => {
     loadChildren();
@@ -70,6 +127,30 @@ export default function ParentStudents() {
       message.error('Failed to load child data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!selectedChild) return;
+
+    try {
+      const blob = await studentService.exportScoresBySemester(selectedSemester, Number(selectedChild.id));
+      downloadBlob(blob, `BangDiem_${selectedSemester}.xlsx`);
+    } catch (error) {
+      console.error(error);
+      message.error('Failed to export Excel');
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!selectedChild) return;
+
+    try {
+      const blob = await studentService.exportPdfBySemester(selectedSemester, Number(selectedChild.id));
+      downloadBlob(blob, `BangDiem_${selectedSemester}.pdf`);
+    } catch (error) {
+      console.error(error);
+      message.error('Failed to export PDF');
     }
   };
 
@@ -120,27 +201,33 @@ export default function ParentStudents() {
                       children: (
                         <Space direction="vertical" style={{ width: '100%' }} size={16}>
                           <Space wrap>
-                            <Button onClick={() => window.open(parentService.exportScoresExcelUrl(selectedChild.id), '_blank')}>
+                            <Select
+                              value={selectedSemester}
+                              onChange={setSelectedSemester}
+                              options={[
+                                { value: 'HK1', label: 'HK1' },
+                                { value: 'HK2', label: 'HK2' },
+                              ]}
+                              style={{ width: 120 }}
+                            />
+                            <Button onClick={handleExportExcel}>
                               Export Excel
                             </Button>
-                            <Button onClick={() => window.open(parentService.exportScoresPdfUrl(selectedChild.id), '_blank')}>
+                            <Button onClick={handleExportPdf}>
                               Export PDF
                             </Button>
                           </Space>
+
                           <Table
                             rowKey="subjectName"
-                            dataSource={mergedScores}
+                            dataSource={scoreRows}
                             pagination={false}
                             columns={[
                               { title: 'Subject', dataIndex: 'subjectName' },
-                              { title: 'Oral 1', dataIndex: 'oral1' },
-                              { title: '15p 1', dataIndex: 'test15_1' },
-                              { title: 'Mid 1', dataIndex: 'mid1' },
-                              { title: 'Final 1', dataIndex: 'final1' },
-                              { title: 'Oral 2', dataIndex: 'oral2' },
-                              { title: '15p 2', dataIndex: 'test15_2' },
-                              { title: 'Mid 2', dataIndex: 'mid2' },
-                              { title: 'Final 2', dataIndex: 'final2' },
+                              { title: 'Oral', dataIndex: 'oral', render: (value) => value ?? '-' },
+                              { title: 'P15', dataIndex: 'p15', render: (value) => value ?? '-' },
+                              { title: 'Mid', dataIndex: 'mid', render: (value) => value ?? '-' },
+                              { title: 'Final', dataIndex: 'final', render: (value) => value ?? '-' },
                             ]}
                           />
                         </Space>
@@ -151,20 +238,37 @@ export default function ParentStudents() {
                       label: 'Attendance',
                       children: (
                         <Table
-                          rowKey="id"
-                          dataSource={attendance}
+                          rowKey="date"
+                          dataSource={attendanceRows}
                           pagination={{ pageSize: 8 }}
+                          size="middle"
                           columns={[
-                            { title: 'Date', dataIndex: 'date' },
-                            { title: 'Period', dataIndex: 'period' },
                             {
-                              title: 'Status',
-                              dataIndex: 'status',
-                              render: (status) => (
-                                <Tag color={status === 'PRESENT' ? 'green' : status === 'LATE' ? 'gold' : 'red'}>
-                                  {status}
-                                </Tag>
+                              title: 'Date',
+                              dataIndex: 'date',
+                              width: 140,
+                            },
+                            {
+                              title: 'Attendance',
+                              render: (_, row: AttendanceDateRow) => (
+                                <Space size={8} wrap>
+                                  {row.records.map((record) => (
+                                    <Tag
+                                      key={`${record.studentId}-${record.period}`}
+                                      color={record.status === 'PRESENT' ? 'green' : record.status === 'LATE' ? 'gold' : 'red'}
+                                    >
+                                      {`Period ${record.period || '-'}: ${record.status}`}
+                                    </Tag>
+                                  ))}
+                                </Space>
                               ),
+                            },
+                            {
+                              title: 'Remark',
+                              render: (_, row: AttendanceDateRow) => {
+                                const remarks = row.records.map((record) => record.remark).filter(Boolean);
+                                return remarks.length ? remarks.join(', ') : '-';
+                              },
                             },
                           ]}
                         />

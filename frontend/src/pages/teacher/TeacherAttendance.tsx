@@ -1,92 +1,96 @@
 import {
-  Card, Form, Button, Select, DatePicker,
-  Table, message, Spin
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Form,
+  Row,
+  Select,
+  Spin,
+  Table,
+  Tag,
+  message,
 } from 'antd';
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { teacherService } from '../../api/teacherService';
-import client from '../../api/client';
-import { Clazz } from '../../types';
+import { Attendance, Clazz } from '../../types';
 import { auth } from '../../utils/auth';
+import { filterAttendanceByPeriod, PERIODS } from '../../utils/attendance';
 
 export default function TeacherAttendance() {
   const user = auth.getUser();
 
   const [classes, setClasses] = useState<Clazz[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<any[]>([]);
-
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [studentStatus, setStudentStatus] = useState<any>({});
+  const [selectedPeriod, setSelectedPeriod] = useState<string>();
+  const [studentStatus, setStudentStatus] = useState<Record<string, Attendance['status']>>({});
   const [loading, setLoading] = useState(false);
 
   const [form] = Form.useForm();
 
-  // 🔥 LOAD INIT
+  const filteredAttendance = useMemo(
+    () => filterAttendanceByPeriod(attendance, selectedPeriod),
+    [attendance, selectedPeriod]
+  );
+
   useEffect(() => {
     loadInit();
   }, []);
 
   const loadInit = async () => {
     try {
-      const [classRes, subjectRes] = await Promise.all([
-        teacherService.getClasses(user?.email || ''),
-        client.get('/subjects').then(r => r.data),
-      ]);
-
+      const classRes = await teacherService.getClasses(user?.email || '');
       setClasses(classRes);
-      setSubjects(subjectRes);
     } catch {
       message.error('Init load failed');
     }
   };
 
-  // 🔥 SELECT CLASS
   const handleClassSelect = async (classId: string) => {
     try {
       setLoading(true);
       setSelectedClass(classId);
+      setSelectedPeriod(undefined);
 
       const [studentsRes, attendanceRes] = await Promise.all([
         teacherService.getStudentsByClass(Number(classId)),
-        teacherService.getAttendance(classId)
+        teacherService.getAttendance(classId),
       ]);
 
-      setStudents(studentsRes);
+      setStudents(studentsRes || []);
       setAttendance(attendanceRes);
 
-      // reset status
-      const initStatus: any = {};
-      studentsRes.forEach((s: any) => {
-        initStatus[s.id] = 'PRESENT';
+      const initStatus: Record<string, Attendance['status']> = {};
+      (studentsRes || []).forEach((student: any) => {
+        initStatus[String(student.id)] = 'PRESENT';
       });
       setStudentStatus(initStatus);
-
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔥 MARK ATTENDANCE
   const handleMarkAttendance = async (values: any) => {
     try {
       setLoading(true);
+      const period = String(values.period);
 
-      const payloads = students.map((s: any) => ({
-        studentId: s.id,
+      const payloads = students.map((student: any) => ({
+        studentId: student.id,
         classId: selectedClass,
-        period: values.period, // AM4 / AM5 / PM
+        period,
         date: values.date.format('YYYY-MM-DD'),
-        status: studentStatus[s.id] || 'PRESENT'
+        status: studentStatus[String(student.id)] || 'PRESENT',
       }));
 
-      for (let p of payloads) {
-        await teacherService.markAttendance(p);
-      }
+      await Promise.all(payloads.map((payload) => teacherService.markAttendance(payload)));
 
+      const attendanceRes = await teacherService.getAttendance(selectedClass);
+      setAttendance(attendanceRes);
+      setSelectedPeriod(period);
       message.success('Attendance marked!');
-      handleClassSelect(selectedClass);
-
     } catch (error) {
       console.error(error);
       message.error('Failed to mark attendance');
@@ -95,101 +99,105 @@ export default function TeacherAttendance() {
     }
   };
 
-  // 🔥 TABLE CHỌN STATUS
   const studentColumns = [
     {
       title: 'Student',
-      dataIndex: 'fullName'
+      dataIndex: 'fullName',
     },
     {
       title: 'Status',
-      render: (_: any, r: any) => (
+      width: 160,
+      render: (_: any, record: any) => (
         <Select
-          value={studentStatus[r.id]}
+          value={studentStatus[String(record.id)]}
           onChange={(value) =>
-            setStudentStatus({
-              ...studentStatus,
-              [r.id]: value
-            })
+            setStudentStatus((current) => ({
+              ...current,
+              [String(record.id)]: value,
+            }))
           }
           options={[
             { label: 'Present', value: 'PRESENT' },
-            { label: 'Absent', value: 'ABSENT' }
+            { label: 'Absent', value: 'ABSENT' },
+            { label: 'Late', value: 'LATE' },
           ]}
-          style={{ width: 120 }}
+          style={{ width: 130 }}
         />
-      )
-    }
+      ),
+    },
   ];
 
   const columns = [
     {
       title: 'Student',
-      render: (_: any, r: any) => r.student?.fullName || r.studentId,
+      render: (_: any, record: any) => record.student?.fullName || record.studentId,
     },
     {
       title: 'Date',
       dataIndex: 'date',
+      width: 140,
     },
     {
-      title: 'Session',
+      title: 'Period',
       dataIndex: 'period',
-      render: (p: string) => {
-        if (p === 'AM4') return 'AM (Tiết 1-4)';
-        if (p === 'AM5') return 'AM (Tiết 1-5)';
-        return 'PM (Tiết 6-9)';
-      }
+      width: 120,
+      render: (period: string) => `Period ${period || '-'}`,
     },
     {
       title: 'Status',
       dataIndex: 'status',
-      render: (status: string) => (
-        <span style={{ color: status === 'PRESENT' ? 'green' : 'red' }}>
+      width: 120,
+      render: (status: Attendance['status']) => (
+        <Tag color={status === 'PRESENT' ? 'green' : status === 'LATE' ? 'gold' : 'red'}>
           {status}
-        </span>
+        </Tag>
       ),
     },
   ];
 
   return (
     <Spin spinning={loading}>
-      {/* FORM */}
       <Card title="Mark Attendance" className="mb-4">
         <Form form={form} layout="vertical" onFinish={handleMarkAttendance}>
+          <Row gutter={12}>
+            <Col xs={24} md={8}>
+              <Form.Item label="Class" name="classId" rules={[{ required: true }]}>
+                <Select
+                  placeholder="Select class"
+                  onChange={handleClassSelect}
+                  options={classes.map((clazz) => ({
+                    label: clazz.name,
+                    value: String(clazz.id),
+                  }))}
+                />
+              </Form.Item>
+            </Col>
 
-          <Form.Item label="Class" name="classId" rules={[{ required: true }]}>
-            <Select
-              placeholder="Select class"
-              onChange={handleClassSelect}
-              options={classes.map(c => ({
-                label: c.name,
-                value: c.id
-              }))}
-            />
-          </Form.Item>
+            <Col xs={24} md={8}>
+              <Form.Item label="Date" name="date" rules={[{ required: true }]}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
 
-          <Form.Item label="Date" name="date" rules={[{ required: true }]}>
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
+            <Col xs={24} md={8}>
+              <Form.Item label="Period" name="period" rules={[{ required: true }]}>
+                <Select
+                  placeholder="Select period"
+                  options={PERIODS.map((period) => ({
+                    label: `Period ${period}`,
+                    value: period,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item label="Session" name="period" rules={[{ required: true }]}>
-            <Select
-              placeholder="Select session"
-              options={[
-                { label: 'AM4 (Tiết 1-4)', value: 'AM4' },
-                { label: 'AM5 (Tiết 1-5)', value: 'AM5' },
-                { label: 'PM (Tiết 6-9)', value: 'PM' }
-              ]}
-            />
-          </Form.Item>
-
-          <Button type="primary" htmlType="submit">
+          <Button type="primary" htmlType="submit" disabled={!selectedClass || students.length === 0}>
             Mark Attendance
           </Button>
         </Form>
       </Card>
 
-      {/* CHỌN STATUS */}
       {students.length > 0 && (
         <Card title="Select Attendance">
           <Table
@@ -197,17 +205,31 @@ export default function TeacherAttendance() {
             columns={studentColumns}
             rowKey="id"
             pagination={false}
+            size="middle"
           />
         </Card>
       )}
 
-      {/* RECORD */}
       {selectedClass && (
         <Card title="Attendance Records" className="mt-4">
+          <Select
+            allowClear
+            placeholder="All periods"
+            value={selectedPeriod}
+            onChange={setSelectedPeriod}
+            options={PERIODS.map((period) => ({
+              label: `Period ${period}`,
+              value: period,
+            }))}
+            style={{ width: 180, marginBottom: 12 }}
+          />
+
           <Table
-            dataSource={attendance}
+            dataSource={filteredAttendance}
             columns={columns}
             rowKey="id"
+            pagination={{ pageSize: 10 }}
+            size="middle"
           />
         </Card>
       )}

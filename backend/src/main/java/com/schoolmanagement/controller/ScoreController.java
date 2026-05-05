@@ -47,19 +47,26 @@ public class ScoreController {
     }
 
     @GetMapping("/export/{studentId}")
-    public ResponseEntity<byte[]> exportByStudent(@PathVariable Long studentId) throws IOException {
+    public ResponseEntity<byte[]> exportByStudent(
+            @PathVariable Long studentId,
+            @RequestParam Integer semester) throws IOException {
 
-        byte[] file = scoreService.exportByStudent(studentId);
+        byte[] file = scoreService.exportByStudent(studentId, semester);
 
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=scores.xlsx")
-                .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=score_student_" + studentId + "_hk" + semester + ".xlsx")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
     }
 
     @GetMapping("/export/student/{studentId}")
-    public ResponseEntity<byte[]> exportByStudentAlias(@PathVariable Long studentId) throws IOException {
-        return exportByStudent(studentId);
+    public ResponseEntity<byte[]> exportByStudentAlias(
+            @PathVariable Long studentId,
+            @RequestParam Integer semester) throws IOException {
+
+        return exportByStudent(studentId, semester);
     }
 
     @GetMapping("/student/{studentId}")
@@ -158,8 +165,10 @@ public class ScoreController {
     }
 
     @GetMapping("/export")
-    public ResponseEntity<byte[]> export() throws IOException {
-        byte[] content = scoreService.exportAll();
+    public ResponseEntity<byte[]> export(@RequestParam Integer semester) throws IOException {
+
+        byte[] content = scoreService.exportAll(semester);
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=score-report.xlsx")
                 .contentType(MediaType.parseMediaType(
@@ -180,6 +189,30 @@ public class ScoreController {
                 .contentType(MediaType.parseMediaType(
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(content);
+    }
+
+    @GetMapping("/export/teacher/class/{classId}")
+    public ResponseEntity<byte[]> exportTeacher(
+            @PathVariable Long classId,
+            @RequestParam(defaultValue = "1") Integer semester,
+            @RequestParam String email) throws IOException {
+
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+
+        byte[] data = scoreService.exportTeacher(classId, semester, email);
+
+        if (data == null || data.length == 0) {
+            throw new RuntimeException("Không có dữ liệu để export");
+        }
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=teacher_class_" + classId + "_hk" + semester + ".xlsx")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(data);
     }
 
     @GetMapping("/export/class/{classId}/pdf")

@@ -97,9 +97,23 @@ export default function TeacherScores() {
     try {
       let blob;
       let fileName;
+      if (!user?.email) {
+        message.error("Không có email user");
+        return;
+      }
 
+      blob = await teacherService.exportTeacherExcel(
+        selectedClassId,
+        semester,
+        user.email
+      );
       if (exportType === 'excel') {
-        blob = await teacherService.exportScoreExcel(selectedClassId, semester);
+        blob = await teacherService.exportTeacherExcel(
+          selectedClassId,
+          semester,
+          user.email // 👈 BẮT BUỘC
+        );
+
         fileName = `BangDiem_Lop${selectedClassId}_HK${semester}.xlsx`;
       } else {
         blob = await teacherService.exportScorePDF(selectedClassId, semester);

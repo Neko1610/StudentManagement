@@ -96,8 +96,8 @@ export default function StudentScores() {
       let fileName;
 
       if (exportType === 'excel') {
-        blob = await studentService.exportScores(student.id);
-        fileName = `BangDiem_HS_${student.id}.xlsx`;
+        blob = await studentService.exportScores(student.id, semester);
+        fileName = `BangDiem_HS_${student.id}_HK${semester}.xlsx`;
       } else {
         // ✅ truyền semester vào
         blob = await studentService.exportPdf(student.id, semester);

@@ -33,9 +33,10 @@ export const studentService = {
   getScores: (studentId: number) => {
     return client.get(`/scores/student/${studentId}`).then(res => res.data);
   },
-  exportScores: (studentId: number) => {
-    return client.get(`/scores/export/${studentId}`, {
-      responseType: 'blob' // 🔥 bắt buộc
+  exportScores: (studentId: number, semester: number) => {
+    return client.get(`/scores/export/student/${studentId}`, {
+      params: { semester }, // 🔥 BẮT BUỘC
+      responseType: 'blob'
     }).then(res => res.data);
   },
   exportScoresBySemester: (semester: 'HK1' | 'HK2', studentId: number) => {
@@ -77,10 +78,10 @@ export const studentService = {
     return client.get(`/schedules/class/${classId}`)
       .then(res => (res.data || []).map(mapSchedule));
   },
-exportPdf: (studentId: number, semester: number) => {
-  return client.get(`scores/export/student/${studentId}/pdf`, {
-    params: { semester }, // 👈 thêm dòng này
-    responseType: 'blob',
-  }).then(res => res.data);
-}
+  exportPdf: (studentId: number, semester: number) => {
+    return client.get(`scores/export/student/${studentId}/pdf`, {
+      params: { semester }, // 👈 thêm dòng này
+      responseType: 'blob',
+    }).then(res => res.data);
+  }
 };

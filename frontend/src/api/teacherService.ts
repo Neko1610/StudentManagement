@@ -96,14 +96,12 @@ export const teacherService = {
     return res.data;
   },
 
-  exportScoreExcel: async (classId: number, semester: number) => {
-    const res = await client.get(
-      `/scores/export/class/${classId}?semester=${semester}`,
-      { responseType: 'blob' }
-    );
-    return res.data;
+  exportTeacherExcel: (classId: number, semester: number, email: string) => {
+    return client.get(`/scores/export/teacher/class/${classId}`, {
+      params: { semester, email }, // 👈 THÊM EMAIL
+      responseType: 'blob'
+    }).then(res => res.data);
   },
-
   exportScorePDF: async (classId: number, semester: number) => {
     const res = await client.get(
       `/scores/export/class/${classId}/pdf?semester=${semester}`,

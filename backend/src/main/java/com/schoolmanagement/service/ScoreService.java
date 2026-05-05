@@ -21,15 +21,17 @@ import com.schoolmanagement.entity.Teacher;
 import com.schoolmanagement.repository.ScoreRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.TeacherRepository;
+import com.schoolmanagement.repository.ClazzRepository;
 import com.schoolmanagement.util.ResourceNotFoundException;
 
 import org.apache.poi.ss.usermodel.Color;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.schoolmanagement.entity.Clazz;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,15 +43,19 @@ public class ScoreService {
     private final StudentRepository studentRepository;
     private final ScoreExportService scoreExportService;
     private final TeacherRepository teacherRepository;
+    private final ClazzRepository classRepository;
+
     @Autowired
     private ActivityLogService activityLogService;
 
     public ScoreService(ScoreRepository scoreRepository, StudentRepository studentRepository,
-            ScoreExportService scoreExportService, TeacherRepository teacherRepository) {
+            ScoreExportService scoreExportService, TeacherRepository teacherRepository,
+            ClazzRepository classRepository) {
         this.scoreRepository = scoreRepository;
         this.studentRepository = studentRepository;
         this.scoreExportService = scoreExportService;
         this.teacherRepository = teacherRepository;
+        this.classRepository = classRepository;
 
     }
 
@@ -154,6 +160,39 @@ public class ScoreService {
 
             return dto;
         }).toList();
+    }
+
+    public byte[] exportTeacher(Long classId, Integer semester, String email) throws IOException {
+
+        Teacher teacher = teacherRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Teacher not found"));
+
+        if (teacher.getSubject() == null) {
+            throw new RuntimeException("Teacher chưa có môn");
+        }
+
+        Long subjectId = teacher.getSubject().getId();
+
+        List<Score> scores = scoreRepository.findByStudent_StudentClass_Id(classId)
+                .stream()
+                .filter(s -> s != null)
+                .filter(s -> s.getSemester() != null && s.getSemester().equals(semester))
+                .filter(s -> s.getSubject() != null && s.getSubject().getId().equals(subjectId))
+                .toList();
+
+        // 🔥 tránh crash Excel
+        if (scores.isEmpty()) {
+            return scoreExportService.exportTeacher(new ArrayList<>(), semester, teacher);
+        }
+
+        return scoreExportService.exportTeacher(scores, semester, teacher);
+    }
+
+    public byte[] exportByClass(Long classId, Integer semester) throws IOException {
+
+        List<Score> scores = scoreRepository.findByStudent_StudentClass_Id(classId);
+
+        return scoreExportService.export(scores, semester);
     }
 
     public List<ScoreDTO> getByClassAndTeacher(Long classId, String email) {
@@ -361,42 +400,21 @@ public class ScoreService {
         scoreRepository.deleteById(id);
     }
 
-    public byte[] exportByStudent(Long studentId) throws IOException {
+    public byte[] exportByStudent(Long studentId, Integer semester) throws IOException {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
         List<Score> scores = scoreRepository.findByStudent(student);
 
-        return scoreExportService.export(scores);
-    }
-
-    public byte[] exportByClass(Long classId, Integer semester) throws IOException {
-
-        List<Score> scores = scoreRepository.findByStudent_StudentClass_Id(classId);
-
-        // 🔥 set lại dữ liệu theo học kì
-        for (Score s : scores) {
-            if (semester == 1) {
-                s.setOral2(null);
-                s.setTest15_2(null);
-                s.setMid2(null);
-                s.setFinal2(null);
-            } else {
-                s.setOral1(null);
-                s.setTest15_1(null);
-                s.setMid1(null);
-                s.setFinal1(null);
-            }
-        }
-
-        return scoreExportService.export(scores);
+        return scoreExportService.export(scores, semester); // ✅ truyền semester
     }
 
     public byte[] exportPdf(Long classId, Integer semester, String email) {
         try {
             Teacher teacher = teacherRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Teacher not found"));
-
+            Clazz clazz = classRepository.findById(classId)
+                    .orElseThrow(() -> new RuntimeException("Class not found"));
             Long subjectId = teacher.getSubject().getId();
 
             List<Score> scores = scoreRepository.findByStudent_StudentClass_Id(classId)
@@ -422,6 +440,7 @@ public class ScoreService {
             doc.add(title);
 
             doc.add(new Paragraph("Giáo viên: " + teacher.getFullName(), bold));
+            doc.add(new Paragraph("Lớp: " + clazz.getName(), bold));
             doc.add(new Paragraph("Môn: " + teacher.getSubject().getName(), bold));
 
             Paragraph sub = new Paragraph("Học kỳ: " + semester);
@@ -540,6 +559,7 @@ public class ScoreService {
                     : "N/A";
 
             infoTable.addCell(noBorder("Lớp: " + className));
+            infoTable.addCell(noBorder(""));
 
             doc.add(infoTable);
             doc.add(new Paragraph(" "));
@@ -647,8 +667,8 @@ public class ScoreService {
         return String.format("%.1f", val);
     }
 
-    public byte[] exportAll() throws IOException {
+    public byte[] exportAll(Integer semester) throws IOException {
         List<Score> scores = scoreRepository.findAll();
-        return scoreExportService.export(scores);
+        return scoreExportService.export(scores, semester);
     }
 }
